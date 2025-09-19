@@ -3,7 +3,6 @@
 import os
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
-from .sdk import CognitionFlowSDK
 
 
 @dataclass
@@ -132,7 +131,7 @@ def configure(
     enabled: Optional[bool] = None,
     tags: Optional[Dict[str, str]] = None,
     **kwargs
-) -> CognitionFlowSDK:
+) -> "CognitionFlowSDK":
     """Configure the CognitionFlow SDK.
 
     This function creates a new SDK configuration and initializes the default
@@ -157,7 +156,7 @@ def configure(
         **kwargs: Additional configuration options
 
     Returns:
-        Configured CognitionFlowSDK instance
+        Configured SDK instance
     """
 
     # Start with environment configuration
@@ -195,6 +194,7 @@ def configure(
 
     # Create and set the default SDK instance
     from . import set_default_sdk
+    from .sdk import CognitionFlowSDK
     sdk = CognitionFlowSDK(config)
     set_default_sdk(sdk)
 
