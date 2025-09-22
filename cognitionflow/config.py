@@ -3,6 +3,8 @@
 import os
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
+from urllib import request as _urlreq
+from urllib.error import URLError, HTTPError
 
 
 @dataclass
@@ -49,7 +51,8 @@ class SDKConfig:
         if not self.api_key and self.enabled:
             raise ValueError("api_key is required when SDK is enabled")
         if not self.project_id and self.enabled:
-            raise ValueError("project_id is required when SDK is enabled")
+            # Defer strict requirement; SDK may auto-provision
+            pass
         if self.batch_size <= 0:
             raise ValueError("batch_size must be positive")
         if self.flush_interval <= 0:
@@ -192,6 +195,13 @@ def configure(
     if tags is not None:
         config.tags.update(tags)
 
+    # Auto-provision project if enabled and missing
+    auto_provision = os.getenv("COGNITIONFLOW_AUTO_PROVISION_PROJECT", "true").lower() == "true"
+    if auto_provision and config.enabled and config.api_key and not config.project_id:
+        resolved = _resolve_or_create_project(config.endpoint, config.api_key)
+        if resolved:
+            config.project_id = resolved
+
     # Create and set the default SDK instance
     from . import set_default_sdk
     from .sdk import CognitionFlowSDK
@@ -199,3 +209,34 @@ def configure(
     set_default_sdk(sdk)
 
     return sdk
+
+
+def _resolve_or_create_project(endpoint: str, api_key: str) -> Optional[str]:
+    """Resolve project via whoami; if none, create-or-get default project.
+
+    Uses stdlib urllib to avoid adding dependencies.
+    Returns project_id or None.
+    """
+    import json
+
+    base = endpoint.rstrip("/")
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    # whoami
+    try:
+        req = _urlreq.Request(f"{base}/api/v1/auth/whoami", headers=headers, method="GET")
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data.get("project_id"):
+                return data["project_id"]
+    except (URLError, HTTPError):
+        pass
+
+    # create-or-get default
+    try:
+        req = _urlreq.Request(f"{base}/api/v1/projects/default", headers=headers, method="POST")
+        with _urlreq.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data.get("id")
+    except (URLError, HTTPError):
+        return None
