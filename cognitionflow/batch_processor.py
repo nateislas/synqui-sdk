@@ -9,6 +9,7 @@ from dataclasses import asdict
 from queue import Queue, Empty
 from threading import Thread
 from typing import List, Dict, Any, Optional
+import uuid
 
 from .models import TraceData, BatchPayload
 from .serialization import serialize_for_api
@@ -84,9 +85,22 @@ class BatchProcessor:
 
     def flush(self):
         """Manually flush the current batch."""
-        if self._batch:
-            self._flush_batch()
-            logger.debug("Manual flush completed")
+        # Ensure we pull any pending events from the queue
+        try:
+            self._process_queue()
+        except Exception as e:
+            logger.error(f"Error processing queue before flush: {e}")
+
+        if not self._batch:
+            return
+
+        # Perform a synchronous send so the caller waits until delivery
+        batch_to_send = self._batch.copy()
+        self._batch.clear()
+        self._last_flush = time.time()
+        logger.debug(f"Flushing batch with {len(batch_to_send)} events")
+        self._send_batch_sync(batch_to_send)
+        logger.debug("Manual flush completed")
 
     def _process_loop(self):
         """Main processing loop that runs in the background thread."""
@@ -203,96 +217,81 @@ class BatchProcessor:
         send_thread.start()
 
     def _send_batch_sync(self, batch: List[Dict[str, Any]]):
-        """Send batch synchronously in a separate thread.
-
-        Args:
-            batch: List of events to send
-        """
-        try:
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-            # Run the async send operation
-            loop.run_until_complete(self._send_batch_async(batch))
-
-        except Exception as e:
-            logger.error(f"Error in batch sender thread: {e}")
-            # Add batch to failed batches for retry
-            self._failed_batches.append({
-                "batch": batch,
-                "timestamp": time.time(),
-                "attempts": 1
-            })
-        finally:
-            try:
-                loop.close()
-            except Exception:
-                pass
-
-    async def _send_batch_async(self, batch: List[Dict[str, Any]]):
-        """Send batch to the API asynchronously.
-
-        Args:
-            batch: List of events to send
-        """
+        """Send batch synchronously using requests (no event loop required)."""
         if not batch:
             return
 
-        # Create batch payload
-        payload = BatchPayload(
-            project_id=self.config.project_id,
-            events=batch,
-            environment=self.config.environment
-        )
+        # Normalize events to include required fields (TraceCreate schema)
+        normalized: List[Dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        for ev in batch:
+            item = dict(ev)
+            # Ensure every event maps to a unique trace row by using span_id when available
+            # This avoids duplicate (project_id, trace_id) conflicts server-side
+            base_id = item.get("span_id") or item.get("trace_id")
+            if not base_id:
+                base_id = str(uuid.uuid4())
+            item["trace_id"] = base_id
+            if not item.get("start_time"):
+                item["start_time"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            # Ensure integer duration per API schema
+            if "duration_ms" in item and item["duration_ms"] is not None:
+                try:
+                    item["duration_ms"] = int(item["duration_ms"])
+                except Exception:
+                    item["duration_ms"] = None
+            # Ensure unique trace_id per event to satisfy backend unique constraint
+            tid = item.get("trace_id")
+            if tid in seen_ids:
+                # Prefer span_id if present, else generate a new UUID
+                new_tid = item.get("span_id") or str(uuid.uuid4())
+                item["trace_id"] = new_tid
+                tid = new_tid
+            seen_ids.add(tid)
+            status = item.get("status")
+            if status not in {"running", "completed", "failed", "cancelled"}:
+                item["status"] = "completed"
+            normalized.append(item)
+
+        url = f"{self.config.endpoint.rstrip('/')}/api/v1/traces/batch"
+        headers = {
+            "Authorization": f"Bearer {self.config.api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "CognitionFlow-Python-SDK/0.1.0"
+        }
+        payload = {"traces": normalized, "agents": [], "dependencies": []}
+
+        # Lazy import requests to avoid hard dependency at import time
+        try:
+            import requests
+        except ImportError:
+            logger.error("'requests' is required to send batches. Install with: pip install requests")
+            return
 
         for attempt in range(self.config.max_retries):
             try:
-                # Import aiohttp here to avoid import errors if not installed
-                try:
-                    import aiohttp
-                except ImportError:
-                    logger.error("aiohttp is required for SDK functionality. Install it with: pip install aiohttp")
+                resp = requests.post(url, headers=headers, json=payload, timeout=self.config.timeout)
+                if resp.status_code < 400:
+                    logger.debug(f"Successfully sent batch of {len(batch)} events")
+                    self._consecutive_failures = 0
                     return
-
-                # Prepare request
-                headers = {
-                    "Authorization": f"Bearer {self.config.api_key}",
-                    "Content-Type": "application/json",
-                    "User-Agent": f"CognitionFlow-Python-SDK/0.1.0"
-                }
-
-                url = f"{self.config.endpoint.rstrip('/')}/api/v1/traces"
-                payload_json = serialize_for_api(payload.to_dict())
-
-                # Send request
-                timeout = aiohttp.ClientTimeout(total=self.config.timeout)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.post(url, data=payload_json, headers=headers) as response:
-                        if response.status < 400:
-                            logger.debug(f"Successfully sent batch of {len(batch)} events")
-                            self._consecutive_failures = 0
-                            return
-                        else:
-                            error_text = await response.text()
-                            raise Exception(f"API error {response.status}: {error_text}")
-
+                else:
+                    raise Exception(f"API error {resp.status_code}: {resp.text}")
             except Exception as e:
                 self._consecutive_failures += 1
-
                 if attempt == self.config.max_retries - 1:
                     logger.error(f"Failed to send batch after {self.config.max_retries} attempts: {e}")
-                    # Add to failed batches for later retry
                     self._failed_batches.append({
                         "batch": batch,
                         "timestamp": time.time(),
                         "attempts": self.config.max_retries
                     })
                 else:
-                    # Exponential backoff
-                    delay = min(60.0, 2 ** attempt + (time.time() % 1))  # Add jitter
+                    delay = min(60.0, 2 ** attempt + (time.time() % 1))
                     logger.warning(f"Batch send attempt {attempt + 1} failed: {e}. Retrying in {delay:.1f}s")
-                    await asyncio.sleep(delay)
+                    time.sleep(delay)
+
+    # Removed async variant to avoid event loop conflicts
 
     def _retry_failed_batches(self):
         """Retry sending failed batches."""
