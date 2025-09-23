@@ -24,12 +24,32 @@ pip install -e .
 
 ### 1. Configure the SDK
 
+#### Option A: Project-Scoped API Key (Recommended)
+
+For applications that work with a single project, use a project-scoped API key:
+
+```python
+import cognitionflow
+import os
+
+# Set environment variables
+os.environ["COGNITIONFLOW_API_KEY"] = "cf_your-project-scoped-key-here"
+os.environ["COGNITIONFLOW_ENDPOINT"] = "https://api.cognitionflow.com"
+
+# Configure SDK (reads from environment variables)
+cognitionflow.configure(enabled=True)
+```
+
+#### Option B: General API Key + Project ID
+
+For applications that need access to multiple projects:
+
 ```python
 import cognitionflow
 
 # Basic configuration
 cognitionflow.configure(
-    api_key="your-api-key-here",
+    api_key="your-general-api-key-here",
     project_id="your-project-id-here"
 )
 ```
@@ -68,20 +88,53 @@ async with cognitionflow.span("complex_operation") as span:
 
 ## Configuration Options
 
+### API Key Types
+
+CognitionFlow supports two types of API keys:
+
+#### 1. Project-Scoped API Keys (Recommended)
+- **Use case**: Applications that work with a single project
+- **Benefits**: Simpler configuration, better security, automatic project scoping
+- **Format**: `cf_` prefix (e.g., `cf_PfnOhuv9UPLYpU_9o1gr6s1q27JNv7lbFspUR_aoFAM`)
+- **Configuration**: Only need the API key, no separate project ID required
+
+#### 2. General API Keys
+- **Use case**: Applications that need access to multiple projects
+- **Benefits**: Flexible, can access multiple projects with different project IDs
+- **Format**: `cf_` prefix (e.g., `cf_l5-XPrTnnqk4H42pbchNrdcR5KvGUrpMH3tG6bgw6GE`)
+- **Configuration**: Requires both API key and project ID
+
 ### Environment Variables
 
 You can configure the SDK using environment variables:
 
+#### Project-Scoped API Key (Recommended)
+
 ```bash
-export COGNITIONFLOW_API_KEY="your-api-key"
-export COGNITIONFLOW_PROJECT_ID="your-project-id"
+export COGNITIONFLOW_API_KEY="cf_your-project-scoped-key-here"
+export COGNITIONFLOW_ENDPOINT="https://api.cognitionflow.com"
 export COGNITIONFLOW_ENVIRONMENT="production"
 ```
 
 Then configure from environment:
 
 ```python
-cognitionflow.configure_from_env()
+cognitionflow.configure(enabled=True)
+```
+
+#### General API Key + Project ID
+
+```bash
+export COGNITIONFLOW_API_KEY="your-general-api-key"
+export COGNITIONFLOW_PROJECT_ID="your-project-id"
+export COGNITIONFLOW_ENDPOINT="https://api.cognitionflow.com"
+export COGNITIONFLOW_ENVIRONMENT="production"
+```
+
+Then configure from environment:
+
+```python
+cognitionflow.configure(enabled=True)
 ```
 
 ### Advanced Configuration
