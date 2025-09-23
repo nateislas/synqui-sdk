@@ -115,6 +115,9 @@ class CognitionFlowSDK:
                 metadata=kwargs.get("metadata", {})
             )
 
+            # Set prompt fields if provided
+            self._set_prompt_fields(trace_data, kwargs)
+
             # Add global tags from config
             trace_data.tags.update(self.config.tags)
 
@@ -170,6 +173,9 @@ class CognitionFlowSDK:
                 tags=kwargs.get("tags", {}),
                 metadata=kwargs.get("metadata", {})
             )
+
+            # Set prompt fields if provided
+            self._set_prompt_fields(trace_data, kwargs)
 
             # Add global tags from config
             trace_data.tags.update(self.config.tags)
@@ -397,6 +403,37 @@ class CognitionFlowSDK:
 
         except Exception as e:
             logger.warning(f"Failed to queue trace data: {e}")
+
+    def _set_prompt_fields(self, trace_data: TraceData, kwargs: Dict[str, Any]) -> None:
+        """Populate explicit prompt fields on the trace if provided.
+
+        Supported kwargs:
+            - system_prompt: str
+            - prompt_name: str
+            - prompt_version: str
+            - prompt_parameters: dict
+        """
+        try:
+            system_prompt = kwargs.get("system_prompt")
+            if isinstance(system_prompt, str):
+                trace_data.system_prompt = system_prompt
+                # Compute a stable hash for dedup/version hint
+                import hashlib
+                trace_data.prompt_hash = hashlib.sha256(system_prompt.encode("utf-8")).hexdigest()
+
+            prompt_name = kwargs.get("prompt_name")
+            if isinstance(prompt_name, str):
+                trace_data.prompt_name = prompt_name
+
+            prompt_version = kwargs.get("prompt_version")
+            if isinstance(prompt_version, str):
+                trace_data.prompt_version = prompt_version
+
+            prompt_parameters = kwargs.get("prompt_parameters")
+            if isinstance(prompt_parameters, dict):
+                trace_data.prompt_parameters = prompt_parameters
+        except Exception as e:
+            logger.debug(f"Failed to set prompt fields: {e}")
 
     def flush(self, timeout: Optional[float] = None):
         """Manually flush pending traces.

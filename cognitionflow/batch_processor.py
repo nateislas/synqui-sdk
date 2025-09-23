@@ -310,7 +310,13 @@ class BatchProcessor:
                     "error_stack_trace": trace.get("error", {}).get("traceback") if trace.get("error") else None,
                     "llm_model_name": trace.get("metadata", {}).get("llm_model_name"),
                     "llm_model_provider": trace.get("metadata", {}).get("llm_model_provider"),
-                    "llm_model_parameters": trace.get("metadata", {}).get("llm_model_parameters")
+                    "llm_model_parameters": trace.get("metadata", {}).get("llm_model_parameters"),
+                    # Prompt fields passed through from SDK TraceData
+                    "system_prompt": trace.get("system_prompt"),
+                    "prompt_name": trace.get("prompt_name"),
+                    "prompt_version": trace.get("prompt_version"),
+                    "prompt_parameters": trace.get("prompt_parameters"),
+                    "prompt_hash": trace.get("prompt_hash"),
                 }
                 agents.append(agent_data)
         

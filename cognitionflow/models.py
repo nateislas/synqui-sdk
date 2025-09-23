@@ -70,6 +70,13 @@ class TraceData:
     model_name: Optional[str] = None
     model_provider: Optional[str] = None
 
+    # Prompt capture fields (explicit, provider-agnostic)
+    system_prompt: Optional[str] = None
+    prompt_name: Optional[str] = None
+    prompt_version: Optional[str] = None
+    prompt_parameters: Optional[Dict[str, Any]] = None
+    prompt_hash: Optional[str] = None  # hash of system_prompt for dedup/lookup
+
     def set_attribute(self, key: str, value: Any):
         """Set a custom attribute on the span.
 
@@ -145,6 +152,12 @@ class TraceData:
             "cost": self.cost,
             "model_name": self.model_name,
             "model_provider": self.model_provider,
+            # Prompt fields
+            "system_prompt": self.system_prompt,
+            "prompt_name": self.prompt_name,
+            "prompt_version": self.prompt_version,
+            "prompt_parameters": self.prompt_parameters,
+            "prompt_hash": self.prompt_hash,
         }
 
 
