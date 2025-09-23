@@ -296,11 +296,17 @@ class Workflow:
             print(f"      🔍 Created step span: {step_span.span_id} for {step_name}")
             
             try:
+                # Set input data on the span
+                step_span.inputs = {"step_inputs": step_inputs}
+                
                 # Execute the step function
                 if asyncio.iscoroutinefunction(step.function):
                     result = await step.function(step_inputs)
                 else:
                     result = step.function(step_inputs)
+                
+                # Set output data on the span
+                step_span.outputs = {"result": result}
                 
                 step.result = result
                 step.executed = True
@@ -354,7 +360,8 @@ class Workflow:
             metadata={
                 "step_inputs": step_inputs,
                 "parallel_group": step.parallel_group,
-                "dependencies": step.depends_on
+                "dependencies": step.depends_on,
+                "description": step.description
             }
         )
     
