@@ -60,7 +60,6 @@ class BatchProcessor:
         self._thread = Thread(target=self._process_loop, daemon=True, name="CognitionFlow-BatchProcessor")
         self._thread.start()
         logger.info("Batch processor started")
-        print(f"🔍 Batch processor: Started batch processor thread")
 
     def shutdown(self, timeout: float = 5.0):
         """Shutdown the batch processor and flush remaining events.
@@ -77,9 +76,16 @@ class BatchProcessor:
         # Process remaining events in the queue
         self._process_remaining_events()
 
-        # Flush any remaining batch
+        # Flush any remaining batch synchronously to avoid daemon thread issues
         if self._batch:
-            self._flush_batch()
+            try:
+                batch_to_send = self._batch.copy()
+                self._batch.clear()
+                self._last_flush = time.time()
+                logger.debug(f"Flushing final batch with {len(batch_to_send)} events")
+                self._send_batch_sync(batch_to_send)
+            except Exception as e:
+                logger.error(f"Error flushing final batch: {e}")
 
         # Wait for thread to finish
         if self._thread and self._thread.is_alive():
@@ -95,9 +101,7 @@ class BatchProcessor:
         except Exception as e:
             logger.error(f"Error processing queue before flush: {e}")
 
-        print(f"🔍 Batch processor: Flush called, batch size: {len(self._batch)}")
         if not self._batch:
-            print("🔍 Batch processor: No batch to flush")
             return
 
         # Perform a synchronous send so the caller waits until delivery
@@ -105,10 +109,8 @@ class BatchProcessor:
         self._batch.clear()
         self._last_flush = time.time()
         logger.debug(f"Flushing batch with {len(batch_to_send)} events")
-        print(f"🔍 Batch processor: Manual flush with {len(batch_to_send)} events")
         self._send_batch_sync(batch_to_send)
         logger.debug("Manual flush completed")
-        print("🔍 Batch processor: Manual flush completed")
         # Attempt to drain any per-trace buffered groups that are now ready (e.g., root just queued)
         try:
             self._send_batch_sync([])
@@ -118,7 +120,6 @@ class BatchProcessor:
     def _process_loop(self):
         """Main processing loop that runs in the background thread."""
         logger.debug("Batch processor loop started")
-        print("🔍 Batch processor: Background thread started")
 
         while self._running:
             try:
@@ -130,7 +131,6 @@ class BatchProcessor:
 
                 # Check if we need to flush based on time or size
                 if self._should_flush():
-                    print("🔍 Batch processor: Background thread flushing batch")
                     self._flush_batch()
 
                 # Small delay to prevent busy waiting
@@ -150,19 +150,15 @@ class BatchProcessor:
             try:
                 # Get event with short timeout to avoid blocking
                 event = self._event_queue.get(timeout=0.1)
-                print(f"🔍 Batch processor: Got event from queue: {type(event)}")
 
                 # Convert TraceData to dictionary
                 if isinstance(event, TraceData):
                     event_dict = event.to_dict()
-                    print(f"🔍 Batch processor: Converted TraceData to dict: {event_dict.get('agent_name', 'no_agent_name')}")
                 else:
                     event_dict = event
-                    print(f"🔍 Batch processor: Using event as dict: {event_dict}")
 
                 self._batch.append(event_dict)
                 events_processed += 1
-                print(f"🔍 Batch processor: Added event to batch, size: {len(self._batch)}")
 
             except Empty:
                 # No more events in queue
@@ -173,7 +169,6 @@ class BatchProcessor:
 
         if events_processed > 0:
             logger.debug(f"Processed {events_processed} events, batch size: {len(self._batch)}")
-            print(f"🔍 Batch processor: Processed {events_processed} events, batch size: {len(self._batch)}")
 
     def _process_remaining_events(self):
         """Process any remaining events in the queue during shutdown."""
@@ -207,22 +202,18 @@ class BatchProcessor:
 
         # Flush if batch is full
         if len(self._batch) >= self.config.batch_size:
-            print(f"🔍 Batch processor: Should flush - batch is full ({len(self._batch)} >= {self.config.batch_size})")
             return True
 
         # Flush if enough time has passed
         time_since_last_flush = time.time() - self._last_flush
         if time_since_last_flush >= self.config.flush_interval:
-            print(f"🔍 Batch processor: Should flush - time interval ({time_since_last_flush:.1f}s >= {self.config.flush_interval}s)")
             return True
 
         return False
 
     def _flush_batch(self):
         """Send the current batch to the API."""
-        print(f"🔍 Batch processor: _flush_batch called, batch size: {len(self._batch)}")
         if not self._batch:
-            print("🔍 Batch processor: _flush_batch - no batch to flush")
             return
 
         batch_to_send = self._batch.copy()
@@ -230,7 +221,6 @@ class BatchProcessor:
         self._last_flush = time.time()
 
         logger.debug(f"Flushing batch with {len(batch_to_send)} events")
-        print(f"🔍 Batch processor: Flushing batch with {len(batch_to_send)} events")
 
         # Send batch in a separate thread to avoid blocking
         send_thread = Thread(

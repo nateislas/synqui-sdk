@@ -440,7 +440,6 @@ class CognitionFlowSDK:
             # Queue the trace data
             self._event_queue.put(trace_data, timeout=1.0)
             logger.debug(f"Queued trace: {trace_data.agent_name} ({trace_data.span_id})")
-            print(f"🔍 SDK: Queued trace: {trace_data.agent_name} ({trace_data.span_id})")
 
         except Exception as e:
             logger.warning(f"Failed to queue trace data: {e}")
