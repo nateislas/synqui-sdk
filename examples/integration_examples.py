@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import cognitionflow
 
 # Configure SDK for integration examples
-cognitionflow.configure(
+vaquero.configure(
     api_key="integration-example-key",
     project_id="integration-example-project",
     environment="development",
@@ -40,7 +40,7 @@ def fastapi_integration_example():
     # Middleware for automatic request tracing
     class CognitionFlowMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
-            with cognitionflow.span("http_request") as span:
+            with vaquero.span("http_request") as span:
                 span.set_attribute("method", request.method)
                 span.set_attribute("url", str(request.url))
                 span.set_attribute("user_agent", request.headers.get("user-agent", ""))
@@ -57,14 +57,14 @@ def fastapi_integration_example():
     app.add_middleware(CognitionFlowMiddleware)
     
     @app.get("/users/{user_id}")
-    @cognitionflow.trace(agent_name="user_service")
+    @vaquero.trace(agent_name="user_service")
     async def get_user(user_id: int):
         # Simulate database query
         await asyncio.sleep(0.1)
         return {"user_id": user_id, "name": "John Doe", "email": "john@example.com"}
     
     @app.post("/users")
-    @cognitionflow.trace(agent_name="user_service")
+    @vaquero.trace(agent_name="user_service")
     async def create_user(user_data: dict):
         # Simulate user creation
         await asyncio.sleep(0.2)
@@ -84,10 +84,10 @@ class SQLAlchemyIntegration:
     def __init__(self):
         self.queries_executed = 0
     
-    @cognitionflow.trace(agent_name="database_orm")
+    @vaquero.trace(agent_name="database_orm")
     async def execute_query(self, query: str, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """Execute a SQLAlchemy query with tracing."""
-        with cognitionflow.span("sqlalchemy_query") as span:
+        with vaquero.span("sqlalchemy_query") as span:
             span.set_attribute("query_type", "select")
             span.set_attribute("query_text", query[:100])  # Truncate for privacy
             span.set_attribute("param_count", len(params) if params else 0)
@@ -117,10 +117,10 @@ class SQLAlchemyIntegration:
                 span.set_attribute("error_type", type(e).__name__)
                 raise
     
-    @cognitionflow.trace(agent_name="database_orm")
+    @vaquero.trace(agent_name="database_orm")
     async def bulk_insert(self, model_class: str, records: List[Dict[str, Any]]) -> int:
         """Bulk insert with SQLAlchemy tracing."""
-        with cognitionflow.span("sqlalchemy_bulk_insert") as span:
+        with vaquero.span("sqlalchemy_bulk_insert") as span:
             span.set_attribute("model_class", model_class)
             span.set_attribute("record_count", len(records))
             
@@ -146,10 +146,10 @@ class CeleryIntegration:
     """Example of integrating CognitionFlow with Celery tasks."""
     
     @staticmethod
-    @cognitionflow.trace(agent_name="celery_worker")
+    @vaquero.trace(agent_name="celery_worker")
     def process_data_task(data: Dict[str, Any]) -> Dict[str, Any]:
         """Celery task with tracing."""
-        with cognitionflow.span("celery_task") as span:
+        with vaquero.span("celery_task") as span:
             span.set_attribute("task_name", "process_data_task")
             span.set_attribute("data_size", len(str(data)))
             
@@ -166,10 +166,10 @@ class CeleryIntegration:
             return result
     
     @staticmethod
-    @cognitionflow.trace(agent_name="celery_worker")
+    @vaquero.trace(agent_name="celery_worker")
     def send_email_task(recipient: str, subject: str, body: str) -> Dict[str, Any]:
         """Email sending task with tracing."""
-        with cognitionflow.span("celery_email_task") as span:
+        with vaquero.span("celery_email_task") as span:
             span.set_attribute("task_name", "send_email_task")
             span.set_attribute("recipient", recipient)
             span.set_attribute("subject", subject)
@@ -198,7 +198,7 @@ def django_integration_example():
     import cognitionflow
     
     # Configure SDK
-    cognitionflow.configure(
+    vaquero.configure(
         api_key=os.getenv('COGNITIONFLOW_API_KEY'),
         project_id=os.getenv('COGNITIONFLOW_PROJECT_ID'),
         environment=os.getenv('ENVIRONMENT', 'development')
@@ -216,7 +216,7 @@ def django_integration_example():
             if hasattr(request, '_cognitionflow_start_time'):
                 duration = time.time() - request._cognitionflow_start_time
                 
-                with cognitionflow.span("django_request") as span:
+                with vaquero.span("django_request") as span:
                     span.set_attribute("method", request.method)
                     span.set_attribute("path", request.path)
                     span.set_attribute("status_code", response.status_code)
@@ -230,7 +230,7 @@ def django_integration_example():
     from django.views.decorators.http import require_http_methods
     
     @require_http_methods(["GET"])
-    @cognitionflow.trace(agent_name="django_view")
+    @vaquero.trace(agent_name="django_view")
     def user_list_view(request):
         # Simulate database query
         users = User.objects.all()[:10]
@@ -268,7 +268,7 @@ class FlaskIntegration:
             if hasattr(g, 'start_time'):
                 duration = time.time() - g.start_time
                 
-                with cognitionflow.span("flask_request") as span:
+                with vaquero.span("flask_request") as span:
                     span.set_attribute("method", request.method)
                     span.set_attribute("path", request.path)
                     span.set_attribute("status_code", response.status_code)
@@ -277,7 +277,7 @@ class FlaskIntegration:
             return response
         
         @app.route('/users/<int:user_id>')
-        @cognitionflow.trace(agent_name="flask_view")
+        @vaquero.trace(agent_name="flask_view")
         def get_user(user_id):
             # Simulate database query
             time.sleep(0.1)
@@ -294,10 +294,10 @@ class FlaskIntegration:
 class AsyncIOIntegration:
     """Example of integrating CognitionFlow with AsyncIO patterns."""
     
-    @cognitionflow.trace(agent_name="asyncio_worker")
+    @vaquero.trace(agent_name="asyncio_worker")
     async def process_concurrent_tasks(self, tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Process multiple tasks concurrently with tracing."""
-        async with cognitionflow.span("concurrent_processing") as span:
+        async with vaquero.span("concurrent_processing") as span:
             span.set_attribute("task_count", len(tasks))
             
             # Create coroutines for concurrent execution
@@ -322,10 +322,10 @@ class AsyncIOIntegration:
             
             return successful_results
     
-    @cognitionflow.trace(agent_name="asyncio_worker")
+    @vaquero.trace(agent_name="asyncio_worker")
     async def _process_single_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Process a single task with tracing."""
-        with cognitionflow.span("single_task") as span:
+        with vaquero.span("single_task") as span:
             span.set_attribute("task_id", task.get("id", "unknown"))
             span.set_attribute("task_type", task.get("type", "unknown"))
             
@@ -343,7 +343,7 @@ def framework_trace(agent_name: str, framework: str = "custom"):
     """Custom decorator for framework-specific tracing."""
     def decorator(func):
         def wrapper(*args, **kwargs):
-            with cognitionflow.span(f"{framework}_{func.__name__}") as span:
+            with vaquero.span(f"{framework}_{func.__name__}") as span:
                 span.set_attribute("agent_name", agent_name)
                 span.set_attribute("framework", framework)
                 span.set_attribute("function_name", func.__name__)
@@ -383,7 +383,7 @@ class FrameworkContext:
         self.span = None
     
     def __enter__(self):
-        self.span = cognitionflow.span(f"{self.framework}_{self.operation_name}")
+        self.span = vaquero.span(f"{self.framework}_{self.operation_name}")
         self.span.__enter__()
         self.span.set_attribute("framework", self.framework)
         self.span.set_attribute("operation", self.operation_name)

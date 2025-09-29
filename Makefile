@@ -13,19 +13,19 @@ test:  ## Run tests
 	pytest
 
 test-cov:  ## Run tests with coverage
-	pytest --cov=cognitionflow --cov-report=html --cov-report=term
+	pytest --cov=vaquero --cov-report=html --cov-report=term
 
 lint:  ## Run linting
-	flake8 cognitionflow tests
-	isort --check-only cognitionflow tests
-	black --check cognitionflow tests
+	flake8 vaquero tests
+	isort --check-only vaquero tests
+	black --check vaquero tests
 
 format:  ## Format code
-	isort cognitionflow tests
-	black cognitionflow tests
+	isort vaquero tests
+	black vaquero tests
 
 type-check:  ## Run type checking
-	mypy cognitionflow
+	mypy vaquero
 
 clean:  ## Clean build artifacts
 	rm -rf build/

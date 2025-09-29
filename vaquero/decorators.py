@@ -1,4 +1,4 @@
-"""Convenience decorators for the CognitionFlow SDK."""
+"""Convenience decorators for the Vaquero SDK."""
 
 from typing import Callable
 
@@ -17,11 +17,11 @@ def trace(agent_name: str, **kwargs) -> Callable:
         Decorated function
 
     Example:
-        import cognitionflow
+        import vaquero
 
-        cognitionflow.configure(api_key="...", project_id="...")
+        vaquero.configure(api_key="...", project_id="...")
 
-        @cognitionflow.trace("data_processor")
+        @vaquero.trace("data_processor")
         def process_data(data):
             return {"processed": data}
     """

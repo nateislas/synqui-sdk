@@ -11,14 +11,14 @@ from typing import Dict, Any, List
 
 
 # Configure the SDK
-cognitionflow.configure(
+vaquero.configure(
     api_key="your-api-key",
     project_id="your-project-id",
     capture_tokens=True  # Enable automatic token counting
 )
 
 
-@cognitionflow.trace("llm_agent")
+@vaquero.trace("llm_agent")
 async def call_llm(prompt: str, model: str = "gpt-3.5-turbo") -> Dict[str, Any]:
     """Simulate an LLM call with automatic token counting."""
     # Simulate LLM response with usage information
@@ -36,7 +36,7 @@ async def call_llm(prompt: str, model: str = "gpt-3.5-turbo") -> Dict[str, Any]:
     return response
 
 
-@cognitionflow.trace("data_processor")
+@vaquero.trace("data_processor")
 def process_data(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Process data with automatic token counting for inputs/outputs."""
     # Simulate data processing
@@ -55,7 +55,7 @@ def process_data(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-@cognitionflow.trace("research_agent")
+@vaquero.trace("research_agent")
 async def research_topic(topic: str, depth: str = "shallow") -> Dict[str, Any]:
     """Research a topic with multiple LLM calls."""
     # First LLM call
@@ -112,7 +112,7 @@ async def main():
     print(f"   Analysis tokens: {result3['analysis']['usage']['total_tokens']}")
     
     # Flush any pending traces
-    cognitionflow.flush()
+    vaquero.flush()
     print("\n✅ All traces sent to CognitionFlow!")
 
 

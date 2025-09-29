@@ -1,8 +1,8 @@
-# CognitionFlow SDK API Reference
+# Vaquero SDK API Reference
 
 ## Overview
 
-The CognitionFlow Python SDK provides comprehensive observability and tracing capabilities for Python applications. This document provides detailed API reference for all SDK components.
+The Vaquero Python SDK provides comprehensive observability and tracing capabilities for Python applications. This document provides detailed API reference for all SDK components.
 
 ## Table of Contents
 
@@ -19,14 +19,14 @@ The CognitionFlow Python SDK provides comprehensive observability and tracing ca
 
 ### SDKConfig
 
-Configuration class for the CognitionFlow SDK.
+Configuration class for the Vaquero SDK.
 
 ```python
 @dataclass
 class SDKConfig:
     api_key: str
     project_id: str
-    endpoint: str = "https://api.cognitionflow.com"
+    endpoint: str = "https://api.vaquero.com"
     batch_size: int = 100
     flush_interval: float = 5.0
     max_retries: int = 3
@@ -41,9 +41,9 @@ class SDKConfig:
 
 #### Parameters
 
-- **api_key** (str): Your CognitionFlow API key
-- **project_id** (str): Your CognitionFlow project ID
-- **endpoint** (str): API endpoint URL (default: "https://api.cognitionflow.com")
+- **api_key** (str): Your Vaquero API key
+- **project_id** (str): Your Vaquero project ID
+- **endpoint** (str): API endpoint URL (default: "https://api.vaquero.com")
 - **batch_size** (int): Number of traces to batch before sending (default: 100)
 - **flush_interval** (float): Time in seconds between batch flushes (default: 5.0)
 - **max_retries** (int): Maximum number of retry attempts for failed requests (default: 3)
@@ -62,10 +62,10 @@ class SDKConfig:
 Configure the global SDK instance.
 
 ```python
-cognitionflow.configure(
+vaquero.configure(
     api_key="your-api-key",
     project_id="your-project-id",
-    endpoint="https://api.cognitionflow.com",
+    endpoint="https://api.vaquero.com",
     batch_size=100,
     flush_interval=5.0
 )
@@ -80,7 +80,7 @@ config = SDKConfig(
     api_key="your-api-key",
     project_id="your-project-id"
 )
-cognitionflow.configure_from_config(config)
+vaquero.configure_from_config(config)
 ```
 
 #### `configure_from_env()`
@@ -88,7 +88,7 @@ cognitionflow.configure_from_config(config)
 Configure the SDK from environment variables.
 
 ```python
-cognitionflow.configure_from_env()
+vaquero.configure_from_env()
 ```
 
 Environment variables:
@@ -108,12 +108,12 @@ Environment variables:
 
 ## Core SDK
 
-### CognitionFlowSDK
+### VaqueroSDK
 
-Main SDK class for CognitionFlow instrumentation.
+Main SDK class for Vaquero instrumentation.
 
 ```python
-class CognitionFlowSDK:
+class VaqueroSDK:
     def __init__(self, config: SDKConfig)
     def trace(self, agent_name: str, **kwargs)
     def span(self, operation_name: str, **kwargs)
@@ -225,11 +225,11 @@ The SDK uses context variables to maintain trace context across function calls.
 
 ```python
 # Get current trace context
-current_trace_id = cognitionflow.get_current_trace_id()
-current_span_id = cognitionflow.get_current_span_id()
+current_trace_id = vaquero.get_current_trace_id()
+current_span_id = vaquero.get_current_span_id()
 
 # Set trace context
-cognitionflow.set_trace_context(trace_id="trace_123", span_id="span_456")
+vaquero.set_trace_context(trace_id="trace_123", span_id="span_456")
 ```
 
 ### Context Functions
@@ -254,7 +254,7 @@ Handles batching and sending of trace events.
 
 ```python
 class BatchProcessor:
-    def __init__(self, sdk: CognitionFlowSDK)
+    def __init__(self, sdk: VaqueroSDK)
     def start(self)
     def shutdown(self)
     def flush(self)
@@ -345,7 +345,7 @@ Force garbage collection if memory usage is high.
 Safely serialize values for transmission.
 
 ```python
-serialized = cognitionflow.serialize_value({"key": "value"})
+serialized = vaquero.serialize_value({"key": "value"})
 ```
 
 ### Error Handling
@@ -355,7 +355,7 @@ serialized = cognitionflow.serialize_value({"key": "value"})
 Capture error information for tracing.
 
 ```python
-error_info = cognitionflow.capture_error(ValueError("Test error"))
+error_info = vaquero.capture_error(ValueError("Test error"))
 ```
 
 ### Trace ID Generation
@@ -365,7 +365,7 @@ error_info = cognitionflow.capture_error(ValueError("Test error"))
 Generate a unique trace ID.
 
 ```python
-trace_id = cognitionflow.generate_trace_id()
+trace_id = vaquero.generate_trace_id()
 ```
 
 #### `generate_span_id() -> str`
@@ -373,7 +373,7 @@ trace_id = cognitionflow.generate_trace_id()
 Generate a unique span ID.
 
 ```python
-span_id = cognitionflow.generate_span_id()
+span_id = vaquero.generate_span_id()
 ```
 
 ## Global Functions
@@ -383,7 +383,7 @@ span_id = cognitionflow.generate_span_id()
 Global trace decorator function.
 
 ```python
-@cognitionflow.trace("my_agent")
+@vaquero.trace("my_agent")
 def my_function():
     pass
 ```
@@ -393,7 +393,7 @@ def my_function():
 Global span context manager.
 
 ```python
-async with cognitionflow.span("my_operation") as span:
+async with vaquero.span("my_operation") as span:
     # Your code here
     pass
 ```
@@ -403,7 +403,7 @@ async with cognitionflow.span("my_operation") as span:
 Global flush function.
 
 ```python
-cognitionflow.flush()
+vaquero.flush()
 ```
 
 ### `shutdown()`
@@ -411,7 +411,7 @@ cognitionflow.flush()
 Global shutdown function.
 
 ```python
-cognitionflow.shutdown()
+vaquero.shutdown()
 ```
 
 ## Error Types

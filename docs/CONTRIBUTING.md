@@ -1,6 +1,6 @@
-# Contributing to CognitionFlow SDK
+# Contributing to Vaquero SDK
 
-Thank you for your interest in contributing to the CognitionFlow Python SDK! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to the Vaquero Python SDK! This document provides guidelines and information for contributors.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ Thank you for your interest in contributing to the CognitionFlow Python SDK! Thi
 
 ## Code of Conduct
 
-This project adheres to a code of conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to conduct@cognitionflow.com.
+This project adheres to a code of conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to conduct@vaquero.com.
 
 ## Getting Started
 
@@ -245,7 +245,7 @@ class TestSDK:
     def test_trace_decorator_success(self):
         """Test successful function tracing."""
         # Arrange
-        sdk = CognitionFlowSDK(test_config)
+        sdk = VaqueroSDK(test_config)
         
         # Act
         @sdk.trace("test_agent")
@@ -380,16 +380,16 @@ Recommended plugins:
 
 ### Resources
 
-- **Documentation**: [https://docs.cognitionflow.com](https://docs.cognitionflow.com)
+- **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
 - **GitHub Issues**: [https://github.com/cognitionflow/cognitionflow-python/issues](https://github.com/cognitionflow/cognitionflow-python/issues)
 - **Discussions**: [https://github.com/cognitionflow/cognitionflow-python/discussions](https://github.com/cognitionflow/cognitionflow-python/discussions)
-- **Email**: dev@cognitionflow.com
+- **Email**: dev@vaquero.com
 
 ### Community
 
-- **Slack**: [CognitionFlow Community](https://cognitionflow.slack.com)
-- **Discord**: [CognitionFlow Discord](https://discord.gg/cognitionflow)
-- **Twitter**: [@CognitionFlow](https://twitter.com/cognitionflow)
+- **Slack**: [Vaquero Community](https://vaquero.slack.com)
+- **Discord**: [Vaquero Discord](https://discord.gg/cognitionflow)
+- **Twitter**: [@Vaquero](https://twitter.com/cognitionflow)
 
 ## Recognition
 
@@ -406,4 +406,4 @@ By contributing to this project, you agree that your contributions will be licen
 
 ## Thank You
 
-Thank you for contributing to the CognitionFlow SDK! Your contributions help make the project better for everyone.
+Thank you for contributing to the Vaquero SDK! Your contributions help make the project better for everyone.

@@ -29,15 +29,15 @@ pip install -e .
 For applications that work with a single project, use a project-scoped API key:
 
 ```python
-import cognitionflow
+import vaquero
 import os
 
 # Set environment variables
-os.environ["COGNITIONFLOW_API_KEY"] = "cf_your-project-scoped-key-here"
-os.environ["COGNITIONFLOW_ENDPOINT"] = "https://api.cognitionflow.com"
+os.environ["VAQUERO_API_KEY"] = "cf_your-project-scoped-key-here"
+os.environ["VAQUERO_ENDPOINT"] = "https://api.vaquero.com"
 
 # Configure SDK (reads from environment variables)
-cognitionflow.configure(enabled=True)
+vaquero.configure(enabled=True)
 ```
 
 #### Option B: General API Key + Project ID
@@ -45,12 +45,13 @@ cognitionflow.configure(enabled=True)
 For applications that need access to multiple projects:
 
 ```python
-import cognitionflow
+import vaquero
 
 # Basic configuration
-cognitionflow.configure(
+vaquero.configure(
     api_key="your-general-api-key-here",
-    project_id="your-project-id-here"
+    project_id="your-project-id-here",
+    auto_instrument_llm=True  # Enable automatic LLM instrumentation
 )
 ```
 
@@ -58,14 +59,14 @@ cognitionflow.configure(
 
 ```python
 # Simple function tracing
-@cognitionflow.trace(agent_name="my_agent")
+@vaquero.trace(agent_name="my_agent")
 def process_data(input_data):
     # Your function logic here
     result = transform_data(input_data)
     return result
 
 # Async function tracing
-@cognitionflow.trace(agent_name="api_client")
+@vaquero.trace(agent_name="api_client")
 async def fetch_data(url):
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
@@ -76,21 +77,50 @@ async def fetch_data(url):
 
 ```python
 # Manual span creation for complex workflows
-async with cognitionflow.span("complex_operation") as span:
+async with vaquero.span("complex_operation") as span:
     span.set_attribute("operation_type", "batch_processing")
     span.set_attribute("batch_size", len(data))
-    
+
     # Your code here
     result = await process_batch(data)
-    
+
     span.set_attribute("result_count", len(result))
+```
+
+### 3.5. Automatic LLM Instrumentation
+
+Vaquero can automatically instrument popular LLM libraries (OpenAI, Anthropic, etc.) to capture system prompts, tokens, and performance metrics:
+
+```python
+import vaquero
+
+# Enable auto-instrumentation
+vaquero.configure(
+    api_key="your-api-key",
+    project_id="your-project-id",
+    auto_instrument_llm=True,  # Automatically instrument LLM calls
+    capture_system_prompts=True  # Capture system prompts
+)
+
+# Now any LLM calls will be automatically traced!
+import openai
+
+client = openai.OpenAI(api_key="your-openai-key")
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello!"}
+    ]
+)
+# This call is automatically instrumented with system prompt, tokens, timing, etc.
 ```
 
 ## Configuration Options
 
 ### API Key Types
 
-CognitionFlow supports two types of API keys:
+Vaquero supports two types of API keys:
 
 #### 1. Project-Scoped API Keys (Recommended)
 - **Use case**: Applications that work with a single project
@@ -111,41 +141,41 @@ You can configure the SDK using environment variables:
 #### Project-Scoped API Key (Recommended)
 
 ```bash
-export COGNITIONFLOW_API_KEY="cf_your-project-scoped-key-here"
-export COGNITIONFLOW_ENDPOINT="https://api.cognitionflow.com"
-export COGNITIONFLOW_ENVIRONMENT="production"
+export VAQUERO_API_KEY="cf_your-project-scoped-key-here"
+export VAQUERO_ENDPOINT="https://api.vaquero.com"
+export VAQUERO_ENVIRONMENT="production"
 ```
 
 Then configure from environment:
 
 ```python
-cognitionflow.configure(enabled=True)
+vaquero.configure(enabled=True)
 ```
 
 #### General API Key + Project ID
 
 ```bash
-export COGNITIONFLOW_API_KEY="your-general-api-key"
-export COGNITIONFLOW_PROJECT_ID="your-project-id"
-export COGNITIONFLOW_ENDPOINT="https://api.cognitionflow.com"
-export COGNITIONFLOW_ENVIRONMENT="production"
+export VAQUERO_API_KEY="your-general-api-key"
+export VAQUERO_PROJECT_ID="your-project-id"
+export VAQUERO_ENDPOINT="https://api.vaquero.com"
+export VAQUERO_ENVIRONMENT="production"
 ```
 
 Then configure from environment:
 
 ```python
-cognitionflow.configure(enabled=True)
+vaquero.configure(enabled=True)
 ```
 
 ### Advanced Configuration
 
 ```python
-from cognitionflow import SDKConfig
+from vaquero import SDKConfig
 
 config = SDKConfig(
     api_key="your-api-key",
     project_id="your-project-id",
-    endpoint="https://api.cognitionflow.com",
+    endpoint="https://api.vaquero.com",
     batch_size=100,
     flush_interval=5.0,
     max_retries=3,
@@ -156,7 +186,7 @@ config = SDKConfig(
     debug=False
 )
 
-cognitionflow.configure_from_config(config)
+vaquero.configure_from_config(config)
 ```
 
 ## Common Use Cases
@@ -166,13 +196,13 @@ cognitionflow.configure_from_config(config)
 Trace individual functions to monitor their performance and behavior:
 
 ```python
-@cognitionflow.trace(agent_name="data_processor")
+@vaquero.trace(agent_name="data_processor")
 def process_user_data(user_id, data):
     # Process user data
     result = transform_data(data)
     return result
 
-@cognitionflow.trace(agent_name="ml_model")
+@vaquero.trace(agent_name="ml_model")
 async def make_prediction(features):
     # ML model prediction
     prediction = await model.predict(features)
@@ -189,7 +219,7 @@ from fastapi import FastAPI
 app = FastAPI()
 
 @app.get("/users/{user_id}")
-@cognitionflow.trace(agent_name="user_service")
+@vaquero.trace(agent_name="user_service")
 async def get_user(user_id: int):
     user = await database.get_user(user_id)
     return user
@@ -200,15 +230,15 @@ async def get_user(user_id: int):
 Trace database operations to monitor query performance:
 
 ```python
-@cognitionflow.trace(agent_name="database")
+@vaquero.trace(agent_name="database")
 async def execute_query(query, params=None):
-    with cognitionflow.span("database_query") as span:
+    with vaquero.span("database_query") as span:
         span.set_attribute("query_type", "select")
         span.set_attribute("table", "users")
-        
+
         result = await database.execute(query, params)
         span.set_attribute("result_count", len(result))
-        
+
         return result
 ```
 
@@ -217,7 +247,7 @@ async def execute_query(query, params=None):
 Trace errors to understand failure patterns:
 
 ```python
-@cognitionflow.trace(agent_name="risky_operation")
+@vaquero.trace(agent_name="risky_operation")
 def risky_operation(data):
     try:
         result = process_data(data)
@@ -232,18 +262,18 @@ def risky_operation(data):
 Trace batch operations to monitor processing efficiency:
 
 ```python
-@cognitionflow.trace(agent_name="batch_processor")
+@vaquero.trace(agent_name="batch_processor")
 async def process_batch(items):
-    async with cognitionflow.span("batch_processing") as span:
+    async with vaquero.span("batch_processing") as span:
         span.set_attribute("batch_size", len(items))
-        
+
         results = []
         for i, item in enumerate(items):
-            async with cognitionflow.span(f"process_item_{i}") as item_span:
+            async with vaquero.span(f"process_item_{i}") as item_span:
                 item_span.set_attribute("item_index", i)
                 result = await process_item(item)
                 results.append(result)
-        
+
         span.set_attribute("processed_count", len(results))
         return results
 ```
@@ -259,18 +289,18 @@ from fastapi.middleware.base import BaseHTTPMiddleware
 app = FastAPI()
 
 # Middleware for automatic request tracing
-class CognitionFlowMiddleware(BaseHTTPMiddleware):
+class VaqueroMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        with cognitionflow.span("http_request") as span:
+        with vaquero.span("http_request") as span:
             span.set_attribute("method", request.method)
             span.set_attribute("url", str(request.url))
-            
+
             response = await call_next(request)
-            
+
             span.set_attribute("status_code", response.status_code)
             return response
 
-app.add_middleware(CognitionFlowMiddleware)
+app.add_middleware(VaqueroMiddleware)
 ```
 
 ### Django
@@ -279,20 +309,20 @@ app.add_middleware(CognitionFlowMiddleware)
 # In middleware.py
 from django.utils.deprecation import MiddlewareMixin
 
-class CognitionFlowMiddleware(MiddlewareMixin):
+class VaqueroMiddleware(MiddlewareMixin):
     def process_request(self, request):
-        request._cognitionflow_start_time = time.time()
-        
+        request._vaquero_start_time = time.time()
+
     def process_response(self, request, response):
-        if hasattr(request, '_cognitionflow_start_time'):
-            duration = time.time() - request._cognitionflow_start_time
-            
-            with cognitionflow.span("django_request") as span:
+        if hasattr(request, '_vaquero_start_time'):
+            duration = time.time() - request._vaquero_start_time
+
+            with vaquero.span("django_request") as span:
                 span.set_attribute("method", request.method)
                 span.set_attribute("path", request.path)
                 span.set_attribute("status_code", response.status_code)
                 span.set_attribute("duration_ms", duration * 1000)
-        
+
         return response
 ```
 
@@ -311,13 +341,13 @@ def before_request():
 def after_request(response):
     if hasattr(g, 'start_time'):
         duration = time.time() - g.start_time
-        
-        with cognitionflow.span("flask_request") as span:
+
+        with vaquero.span("flask_request") as span:
             span.set_attribute("method", request.method)
             span.set_attribute("path", request.path)
             span.set_attribute("status_code", response.status_code)
             span.set_attribute("duration_ms", duration * 1000)
-    
+
     return response
 ```
 
@@ -397,14 +427,14 @@ Monitor SDK health:
 
 ```python
 # Check if SDK is enabled
-if cognitionflow.is_enabled():
+if vaquero.get_default_sdk().config.enabled:
     print("SDK is active")
 
 # Manually flush traces
-cognitionflow.flush()
+vaquero.flush()
 
 # Shutdown SDK
-cognitionflow.shutdown()
+vaquero.shutdown()
 ```
 
 ## Next Steps
@@ -416,10 +446,10 @@ cognitionflow.shutdown()
 
 ## Support
 
-- **Documentation**: [https://docs.cognitionflow.com](https://docs.cognitionflow.com)
-- **GitHub**: [https://github.com/cognitionflow/cognitionflow-python](https://github.com/cognitionflow/cognitionflow-python)
-- **Issues**: [https://github.com/cognitionflow/cognitionflow-python/issues](https://github.com/cognitionflow/cognitionflow-python/issues)
-- **Email**: support@cognitionflow.com
+- **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
+- **GitHub**: [https://github.com/vaquero/vaquero-python](https://github.com/vaquero/vaquero-python)
+- **Issues**: [https://github.com/vaquero/vaquero-python/issues](https://github.com/vaquero/vaquero-python/issues)
+- **Email**: support@vaquero.com
 
 ## License
 
