@@ -36,7 +36,7 @@ class SDKConfig:
 
     api_key: str
     project_id: str
-    endpoint: str = "https://api.vaquero.com"
+    endpoint: str = "https://api.vaquero.app"
     batch_size: int = 100
     flush_interval: float = 5.0
     max_retries: int = 3

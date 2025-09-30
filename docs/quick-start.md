@@ -33,7 +33,7 @@ import os
 
 # Set environment variables
 os.environ["VAQUERO_API_KEY"] = "cf_your-project-scoped-key-here"
-os.environ["VAQUERO_ENDPOINT"] = "https://api.vaquero.com"
+os.environ["VAQUERO_ENDPOINT"] = "https://api.vaquero.app"
 
 # Configure SDK (reads from environment variables)
 vaquero.configure(enabled=True)

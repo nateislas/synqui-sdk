@@ -43,7 +43,7 @@ def setup_custom_sdk():
     prod_config = SDKConfig(
         api_key="prod-api-key",
         project_id="prod-project",
-        endpoint="https://api.vaquero.com/api/v1",
+        endpoint="https://api.vaquero.app/api/v1",
         batch_size=100,  # Larger batches for efficiency
         flush_interval=10.0,  # Less frequent flushing
         max_retries=3,  # More retries for reliability

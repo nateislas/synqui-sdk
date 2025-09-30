@@ -26,7 +26,7 @@ Configuration class for the Vaquero SDK.
 class SDKConfig:
     api_key: str
     project_id: str
-    endpoint: str = "https://api.vaquero.com"
+    endpoint: str = "https://api.vaquero.app"
     batch_size: int = 100
     flush_interval: float = 5.0
     max_retries: int = 3
@@ -43,7 +43,7 @@ class SDKConfig:
 
 - **api_key** (str): Your Vaquero API key
 - **project_id** (str): Your Vaquero project ID
-- **endpoint** (str): API endpoint URL (default: "https://api.vaquero.com")
+- **endpoint** (str): API endpoint URL (default: "https://api.vaquero.app")
 - **batch_size** (int): Number of traces to batch before sending (default: 100)
 - **flush_interval** (float): Time in seconds between batch flushes (default: 5.0)
 - **max_retries** (int): Maximum number of retry attempts for failed requests (default: 3)

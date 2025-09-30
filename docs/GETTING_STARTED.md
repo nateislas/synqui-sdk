@@ -142,7 +142,7 @@ You can configure the SDK using environment variables:
 
 ```bash
 export VAQUERO_API_KEY="cf_your-project-scoped-key-here"
-export VAQUERO_ENDPOINT="https://api.vaquero.com"
+export VAQUERO_ENDPOINT="https://api.vaquero.app"
 export VAQUERO_ENVIRONMENT="production"
 ```
 
@@ -157,7 +157,7 @@ vaquero.configure(enabled=True)
 ```bash
 export VAQUERO_API_KEY="your-general-api-key"
 export VAQUERO_PROJECT_ID="your-project-id"
-export VAQUERO_ENDPOINT="https://api.vaquero.com"
+export VAQUERO_ENDPOINT="https://api.vaquero.app"
 export VAQUERO_ENVIRONMENT="production"
 ```
 
@@ -175,7 +175,7 @@ from vaquero import SDKConfig
 config = SDKConfig(
     api_key="your-api-key",
     project_id="your-project-id",
-    endpoint="https://api.vaquero.com",
+    endpoint="https://api.vaquero.app",
     batch_size=100,
     flush_interval=5.0,
     max_retries=3,
