@@ -236,7 +236,11 @@ class BatchProcessor:
         This buffers events per trace_id and only sends groups that include a root span.
         """
         if not batch:
+            logger.debug("Batch processor: Empty batch, nothing to send")
             return
+
+        logger.info(f"Batch processor: === SENDING BATCH TO API ===")
+        logger.info(f"Batch processor: Batch size: {len(batch)} events")
 
         # Normalize events to include required fields (TraceCreate schema)
         normalized: List[Dict[str, Any]] = []
@@ -510,6 +514,17 @@ class BatchProcessor:
                         agent_id_counters[trace_id][agent_name] = 0
                         agent_id = span_id
 
+                    # Get metadata from the child span (which should contain source code)
+                    child_metadata = child.get("metadata", {})
+                    logger.info(f"Batch processor: Child span metadata keys: {list(child_metadata.keys())}")
+
+                    # Check if source code is in the child metadata
+                    source_code = child_metadata.get("source_code")
+                    if source_code:
+                        logger.info(f"Batch processor: CHILD SPAN CONTAINS SOURCE CODE (length: {len(source_code)})")
+                    else:
+                        logger.warning(f"Batch processor: CHILD SPAN DOES NOT CONTAIN SOURCE CODE")
+
                     agent_data = {
                         "trace_id": trace_id,
                         "agent_id": agent_id,  # Use unique agent_id
@@ -537,7 +552,13 @@ class BatchProcessor:
                         "prompt_name": child.get("prompt_name"),
                         "prompt_version": child.get("prompt_version"),
                         "prompt_parameters": child.get("prompt_parameters"),
-                        "prompt_hash": child.get("prompt_hash")
+                        "prompt_hash": child.get("prompt_hash"),
+                        "raw_data": {
+                            # Keep non-source-code metadata for backward compatibility
+                            **{k: v for k, v in child_metadata.items() if k not in ['source_code', 'docstring', 'function_signature', 'module_name', 'file_path', 'function_name']},
+                            "inputs": child.get("inputs"),
+                            "outputs": child.get("outputs")
+                        }
                     }
                     agents.append(agent_data)
 
@@ -600,6 +621,17 @@ class BatchProcessor:
                             agent_id_counters[trace_id][agent_name] = 0
                             agent_id = span_id
 
+                        # Get metadata from the item (which should contain source code)
+                        item_metadata = item.get("metadata", {})
+                        logger.info(f"Batch processor: Item metadata keys: {list(item_metadata.keys())}")
+
+                        # Check if source code is in the item metadata
+                        source_code = item_metadata.get("source_code")
+                        if source_code:
+                            logger.info(f"Batch processor: ITEM CONTAINS SOURCE CODE (length: {len(source_code)})")
+                        else:
+                            logger.warning(f"Batch processor: ITEM DOES NOT CONTAIN SOURCE CODE")
+
                         agent_data = {
                             "trace_id": trace_id,
                             "agent_id": agent_id,  # Use unique agent_id
@@ -627,7 +659,13 @@ class BatchProcessor:
                             "prompt_name": item.get("prompt_name"),
                             "prompt_version": item.get("prompt_version"),
                             "prompt_parameters": item.get("prompt_parameters"),
-                            "prompt_hash": item.get("prompt_hash")
+                            "prompt_hash": item.get("prompt_hash"),
+                            "raw_data": {
+                                # Keep non-source-code metadata for backward compatibility
+                                **{k: v for k, v in item_metadata.items() if k not in ['source_code', 'docstring', 'function_signature', 'module_name', 'file_path', 'function_name']},
+                                "inputs": item.get("inputs"),
+                                "outputs": item.get("outputs")
+                            }
                         }
                         agents.append(agent_data)
 
@@ -649,6 +687,29 @@ class BatchProcessor:
 
                 # Use the first root item as the trace
                 item = root_items[0]
+
+                # Get metadata from the item (which should contain source code)
+                item_metadata = item.get("metadata", {})
+
+                # Also collect metadata from child spans (which contain source_code)
+                # This ensures source_code from individual agents is included in the trace
+                for child in child_items:
+                    child_metadata = child.get("metadata", {})
+                    if child_metadata and "source_code" in child_metadata:
+                        # Merge child metadata into item metadata to include source_code
+                        item_metadata.update(child_metadata)
+                        logger.info(f"Batch processor: Merged source_code from child span into trace metadata")
+                        break  # Only need one source_code, they should be the same for all agents in a workflow
+
+                logger.info(f"Batch processor: Trace metadata keys: {list(item_metadata.keys())}")
+
+                # Check if source code is in the trace metadata
+                source_code = item_metadata.get("source_code")
+                if source_code:
+                    logger.info(f"Batch processor: TRACE CONTAINS SOURCE CODE (length: {len(source_code)})")
+                else:
+                    logger.warning(f"Batch processor: TRACE DOES NOT CONTAIN SOURCE CODE")
+
                 trace_data = {
                     "trace_id": item.get("trace_id"),
                     "parent_trace_id": item.get("parent_trace_id"),
@@ -673,7 +734,7 @@ class BatchProcessor:
                         "inputs": item.get("inputs"),
                         "outputs": item.get("outputs"),
                         "error": item.get("error"),
-                        "metadata": item.get("metadata"),
+                        "metadata": item_metadata,  # Include the full metadata with source code
                         "attributes": item.get("attributes"),
                         "input_tokens": item.get("input_tokens"),
                         "output_tokens": item.get("output_tokens"),
@@ -686,10 +747,29 @@ class BatchProcessor:
                         "prompt_hash": item.get("prompt_hash"),
                     }
                 }
+                # Check if source_code is in the trace_data before sending
+                if trace_data.get("raw_data") and trace_data["raw_data"].get("metadata"):
+                    metadata = trace_data["raw_data"]["metadata"]
+                    if "source_code" in metadata:
+                        logger.info(f"Batch processor: TRACE DATA CONTAINS SOURCE CODE (length: {len(metadata['source_code'])})")
+                    else:
+                        logger.warning(f"Batch processor: TRACE DATA DOES NOT CONTAIN SOURCE CODE")
+
                 trace_data = {k: v for k, v in trace_data.items() if v is not None}
                 traces.append(trace_data)
 
                 for child in child_items:
+                    # Get metadata from the child span (which should contain source code)
+                    child_metadata = child.get("metadata", {})
+                    logger.info(f"Batch processor: Child span metadata keys: {list(child_metadata.keys())}")
+
+                    # Check if source code is in the child metadata
+                    source_code = child_metadata.get("source_code")
+                    if source_code:
+                        logger.info(f"Batch processor: CHILD SPAN CONTAINS SOURCE CODE (length: {len(source_code)})")
+                    else:
+                        logger.warning(f"Batch processor: CHILD SPAN DOES NOT CONTAIN SOURCE CODE")
+
                     agent_data = {
                         "trace_id": child.get("trace_id"),
                         "agent_id": child.get("span_id"),
@@ -717,7 +797,12 @@ class BatchProcessor:
                         "prompt_name": child.get("prompt_name"),
                         "prompt_version": child.get("prompt_version"),
                         "prompt_parameters": child.get("prompt_parameters"),
-                        "prompt_hash": child.get("prompt_hash")
+                        "prompt_hash": child.get("prompt_hash"),
+                        "raw_data": {
+                            **child_metadata,  # Flatten metadata so source_code is directly accessible
+                            "inputs": child.get("inputs"),
+                            "outputs": child.get("outputs")
+                        }
                     }
                     agents.append(agent_data)
 

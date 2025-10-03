@@ -15,7 +15,7 @@ MAX_DEPTH = 10
 MAX_COLLECTION_SIZE = 100
 
 # Maximum string length
-MAX_STRING_LENGTH = 10000
+MAX_STRING_LENGTH = 50000  # Increased from 10000 to handle larger source code
 
 
 def safe_serialize(obj: Any, depth: int = 0) -> Any:
@@ -47,6 +47,7 @@ def safe_serialize(obj: Any, depth: int = 0) -> Any:
     # Handle strings with length limit
     if isinstance(obj, str):
         if len(obj) > MAX_STRING_LENGTH:
+            logger.warning(f"Truncating string from {len(obj)} to {MAX_STRING_LENGTH} characters")
             return obj[:MAX_STRING_LENGTH] + "..."
         return obj
 
