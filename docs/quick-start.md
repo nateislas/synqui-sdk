@@ -35,8 +35,8 @@ import os
 os.environ["VAQUERO_API_KEY"] = "cf_your-project-scoped-key-here"
 os.environ["VAQUERO_ENDPOINT"] = "https://api.vaquero.app"
 
-# Configure SDK (reads from environment variables)
-vaquero.configure(enabled=True)
+# Initialize SDK with development mode (reads from environment variables)
+vaquero.init(api_key="cf_your-project-scoped-key-here")
 ```
 
 ### Option B: General API Key + Project ID
@@ -46,10 +46,11 @@ For applications that need access to multiple projects:
 ```python
 import vaquero
 
-# Basic configuration
-vaquero.configure(
+# Initialize SDK with production mode
+vaquero.init(
     api_key="your-general-api-key-here",
-    project_id="your-project-id-here"
+    project_id="your-project-id-here",
+    mode="production"  # Use production mode for optimized settings
 )
 ```
 
@@ -67,14 +68,14 @@ config = SDKConfig(
     batch_size=100,           # Batch size for efficient transmission
     flush_interval=5.0,       # Flush interval in seconds
     max_retries=3,            # Retry failed requests
-    capture_inputs=True,      # Capture function inputs
-    capture_outputs=True,     # Capture function outputs
-    capture_errors=True,      # Capture exceptions
+    capture_inputs=False,     # Disable for production privacy
+    capture_outputs=False,    # Disable for production privacy
+    capture_errors=True,      # Keep error capture enabled
     environment="production",
     debug=False
 )
 
-vaquero.configure_from_config(config)
+vaquero.init(config=config)
 ```
 
 ## 3️⃣ Your First Trace (1 minute)
@@ -84,8 +85,8 @@ Now let's trace your first function:
 ```python
 import vaquero
 
-# Configure (if not done already)
-vaquero.configure(api_key="your-api-key", project_id="your-project-id")
+# Initialize SDK (if not done already)
+vaquero.init(api_key="your-api-key", project_id="your-project-id")
 
 # Trace a function
 @vaquero.trace(agent_name="data_processor")
@@ -115,7 +116,7 @@ For more detailed tracing, you can create manual spans:
 import vaquero
 
 @vaquero.trace(agent_name="complex_workflow")
-async def complex_operation(data: dict) -> dict:
+def complex_operation(data: dict) -> dict:
     """Complex operation with manual span control."""
     # Parent span (automatically created by @vaquero.trace)
 
@@ -125,7 +126,7 @@ async def complex_operation(data: dict) -> dict:
         span.set_attribute("table", "users")
 
         # Your database logic here
-        user = await database.get_user(data["user_id"])
+        user = database.get_user(data["user_id"])
         span.set_attribute("user_found", user is not None)
 
     # Another child span
@@ -134,7 +135,7 @@ async def complex_operation(data: dict) -> dict:
         span.set_attribute("method", "POST")
 
         # Your API logic here
-        response = await api_client.post("/external-api", data)
+        response = api_client.post("/external-api", data)
         span.set_attribute("status_code", response.status_code)
 
     return {"status": "completed"}
@@ -172,11 +173,11 @@ Complete reference for all configuration options and APIs.
 
 ### Common Issues
 
-**"SDK not configured" error**
+**"SDK not initialized" error**
 ```python
-# Make sure to call configure() before using the SDK
+# Make sure to call init() before using the SDK
 import vaquero
-vaquero.configure(api_key="your-key", project_id="your-project-id")
+vaquero.init(api_key="your-key", project_id="your-project-id")
 ```
 
 **Traces not appearing**
@@ -190,9 +191,9 @@ else:
 
 **Performance issues**
 ```python
-# Reduce batch size for lower latency
-config = SDKConfig(batch_size=10, flush_interval=1.0)
-vaquero.configure_from_config(config)
+# Use development mode for lower latency, production for efficiency
+config = SDKConfig(batch_size=10, flush_interval=1.0, mode="development")
+vaquero.init(config=config)
 ```
 
 ## 💡 Pro Tips

@@ -57,38 +57,37 @@ class SDKConfig:
 
 ### Configuration Functions
 
-#### `configure(api_key, project_id, **kwargs)`
+#### `init(api_key, project_id, **kwargs)`
 
-Configure the global SDK instance.
+Initialize the global SDK instance with simplified configuration.
 
 ```python
-vaquero.configure(
+vaquero.init(
     api_key="your-api-key",
     project_id="your-project-id",
     endpoint="https://api.vaquero.com",
-    batch_size=100,
-    flush_interval=5.0
+    mode="development"  # or "production"
 )
 ```
 
 #### `configure_from_config(config: SDKConfig)`
 
-Configure the SDK from an SDKConfig object.
+Initialize the SDK from an SDKConfig object.
 
 ```python
 config = SDKConfig(
     api_key="your-api-key",
     project_id="your-project-id"
 )
-vaquero.configure_from_config(config)
+vaquero.init(config=config)
 ```
 
 #### `configure_from_env()`
 
-Configure the SDK from environment variables.
+Initialize the SDK from environment variables.
 
 ```python
-vaquero.configure_from_env()
+vaquero.init()  # Uses VAQUERO_* environment variables
 ```
 
 Environment variables:
@@ -390,10 +389,11 @@ def my_function():
 
 ### `span(operation_name: str, **kwargs)`
 
-Global span context manager.
+Global span context manager for manual span creation.
 
 ```python
-async with vaquero.span("my_operation") as span:
+with vaquero.span("my_operation") as span:
+    span.set_attribute("key", "value")
     # Your code here
     pass
 ```

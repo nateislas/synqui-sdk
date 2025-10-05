@@ -10,8 +10,8 @@ import vaquero
 from typing import Dict, Any, List
 
 
-# Configure the SDK
-vaquero.configure(
+# Initialize the SDK
+vaquero.init(
     api_key="your-api-key",
     project_id="your-project-id",
     capture_tokens=True  # Enable automatic token counting

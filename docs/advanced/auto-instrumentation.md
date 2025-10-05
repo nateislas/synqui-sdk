@@ -19,8 +19,8 @@ Auto-instrumentation automatically detects and traces:
 ```python
 import vaquero
 
-# Enable auto-instrumentation during configuration
-vaquero.configure(
+# Enable auto-instrumentation during initialization
+vaquero.init(
     api_key="your-api-key",
     project_id="your-project-id",
     auto_instrument_llm=True,        # Auto-trace LLM calls
@@ -39,8 +39,8 @@ Automatically trace OpenAI, Anthropic, and other LLM calls:
 import vaquero
 import openai
 
-# Configure auto-instrumentation
-vaquero.configure(
+# Initialize with auto-instrumentation
+vaquero.init(
     api_key="your-api-key",
     project_id="your-project-id",
     auto_instrument_llm=True,

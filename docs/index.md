@@ -13,11 +13,11 @@ Get up and running with Vaquero in just 3 simple steps:
 pip install vaquero-sdk
 ```
 
-### 2️⃣ Configure
+### 2️⃣ Initialize
 ```python
 import vaquero
 
-vaquero.configure(
+vaquero.init(
     api_key="your-api-key",
     project_id="your-project-id"
 )

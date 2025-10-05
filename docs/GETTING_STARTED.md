@@ -22,7 +22,7 @@ pip install -e .
 
 ## Quick Start
 
-### 1. Configure the SDK
+### 1. Initialize the SDK
 
 #### Option A: Project-Scoped API Key (Recommended)
 
@@ -36,8 +36,8 @@ import os
 os.environ["VAQUERO_API_KEY"] = "cf_your-project-scoped-key-here"
 os.environ["VAQUERO_ENDPOINT"] = "https://api.vaquero.com"
 
-# Configure SDK (reads from environment variables)
-vaquero.configure(enabled=True)
+# Initialize SDK with development mode (reads from environment variables)
+vaquero.init(api_key="cf_your-project-scoped-key-here")
 ```
 
 #### Option B: General API Key + Project ID
@@ -47,11 +47,11 @@ For applications that need access to multiple projects:
 ```python
 import vaquero
 
-# Basic configuration
-vaquero.configure(
+# Initialize SDK with production mode
+vaquero.init(
     api_key="your-general-api-key-here",
     project_id="your-project-id-here",
-    auto_instrument_llm=True  # Enable automatic LLM instrumentation
+    mode="production"  # Use production mode for optimized settings
 )
 ```
 
@@ -75,14 +75,16 @@ async def fetch_data(url):
 
 ### 3. Manual Span Creation
 
+For more detailed tracing, you can create manual spans using context managers:
+
 ```python
 # Manual span creation for complex workflows
-async with vaquero.span("complex_operation") as span:
+with vaquero.span("complex_operation") as span:
     span.set_attribute("operation_type", "batch_processing")
     span.set_attribute("batch_size", len(data))
 
     # Your code here
-    result = await process_batch(data)
+    result = process_batch(data)
 
     span.set_attribute("result_count", len(result))
 ```
@@ -143,13 +145,13 @@ You can configure the SDK using environment variables:
 ```bash
 export VAQUERO_API_KEY="cf_your-project-scoped-key-here"
 export VAQUERO_ENDPOINT="https://api.vaquero.app"
-export VAQUERO_ENVIRONMENT="production"
+export VAQUERO_MODE="development"  # or "production"
 ```
 
-Then configure from environment:
+Then initialize from environment:
 
 ```python
-vaquero.configure(enabled=True)
+vaquero.init()  # Uses environment variables
 ```
 
 #### General API Key + Project ID
@@ -158,13 +160,13 @@ vaquero.configure(enabled=True)
 export VAQUERO_API_KEY="your-general-api-key"
 export VAQUERO_PROJECT_ID="your-project-id"
 export VAQUERO_ENDPOINT="https://api.vaquero.app"
-export VAQUERO_ENVIRONMENT="production"
+export VAQUERO_MODE="development"  # or "production"
 ```
 
-Then configure from environment:
+Then initialize from environment:
 
 ```python
-vaquero.configure(enabled=True)
+vaquero.init()  # Uses environment variables
 ```
 
 ### Advanced Configuration
@@ -186,7 +188,7 @@ config = SDKConfig(
     debug=False
 )
 
-vaquero.configure_from_config(config)
+vaquero.init(config=config)
 ```
 
 ## Common Use Cases

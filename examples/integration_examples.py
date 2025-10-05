@@ -13,12 +13,11 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import vaquero
 
-# Configure SDK for integration examples
-vaquero.configure(
+# Initialize SDK for integration examples
+vaquero.init(
     api_key="integration-example-key",
     project_id="integration-example-project",
-    environment="development",
-    debug=True
+    mode="development"
 )
 
 # Example 1: FastAPI Integration
@@ -197,11 +196,11 @@ def django_integration_example():
     # In settings.py
     import vaquero
     
-    # Configure SDK
-    vaquero.configure(
+    # Initialize SDK
+    vaquero.init(
         api_key=os.getenv('VAQUERO_API_KEY'),
         project_id=os.getenv('VAQUERO_PROJECT_ID'),
-        environment=os.getenv('ENVIRONMENT', 'development')
+        mode=os.getenv('VAQUERO_MODE', 'development')
     )
     
     # In middleware.py

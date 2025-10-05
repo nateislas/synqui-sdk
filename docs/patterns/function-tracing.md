@@ -327,11 +327,11 @@ vaquero.flush()
 
 ### "Performance impact too high"
 ```python
-# Reduce batch size for lower latency
+# Use development mode for lower latency
 from vaquero import SDKConfig
 
-config = SDKConfig(batch_size=10, flush_interval=1.0)
-vaquero.configure_from_config(config)
+config = SDKConfig(batch_size=10, flush_interval=1.0, mode="development")
+vaquero.init(config=config)
 ```
 
 ### "Too much data being captured"
@@ -340,9 +340,10 @@ vaquero.configure_from_config(config)
 config = SDKConfig(
     capture_inputs=False,
     capture_outputs=False,
-    capture_errors=True  # Keep error tracking
+    capture_errors=True,  # Keep error tracking
+    mode="production"
 )
-vaquero.configure_from_config(config)
+vaquero.init(config=config)
 ```
 
 ## 🎉 You're Ready!
