@@ -133,9 +133,9 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## Support
 
 - **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
-- **GitHub**: [https://github.com/cognitionflow/cognitionflow-python](https://github.com/cognitionflow/cognitionflow-python)
-- **Issues**: [https://github.com/cognitionflow/cognitionflow-python/issues](https://github.com/cognitionflow/cognitionflow-python/issues)
-- **Email**: support@vaquero.com
+- **GitHub**: [https://github.com/vaquero/vaquero-python](https://github.com/vaquero/vaquero-python)
+- **Issues**: [https://github.com/vaquero/vaquero-python/issues](https://github.com/vaquero/vaquero-python/issues)
+- **Email**: support@vaquero.app
 
 ## License
 

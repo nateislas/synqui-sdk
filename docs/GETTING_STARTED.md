@@ -1,22 +1,22 @@
-# Getting Started with CognitionFlow SDK
+# Getting Started with Vaquero SDK
 
 ## Overview
 
-The CognitionFlow Python SDK provides comprehensive observability and tracing capabilities for Python applications. This guide will help you get started with the SDK in just a few minutes.
+The Vaquero Python SDK provides comprehensive observability and tracing capabilities for Python applications. This guide will help you get started with the SDK in just a few minutes.
 
 ## Installation
 
 ### From PyPI (Recommended)
 
 ```bash
-pip install cognitionflow-sdk
+pip install vaquero-sdk
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/cognitionflow/cognitionflow-python.git
-cd cognitionflow-python
+git clone https://github.com/vaquero/vaquero-python.git
+cd vaquero-python
 pip install -e .
 ```
 
@@ -414,7 +414,7 @@ prod_config = SDKConfig(
 Enable debug mode to see detailed SDK logs:
 
 ```python
-cognitionflow.configure(
+vaquero.configure(
     api_key="your-api-key",
     project_id="your-project-id",
     debug=True
@@ -449,7 +449,7 @@ vaquero.shutdown()
 - **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
 - **GitHub**: [https://github.com/vaquero/vaquero-python](https://github.com/vaquero/vaquero-python)
 - **Issues**: [https://github.com/vaquero/vaquero-python/issues](https://github.com/vaquero/vaquero-python/issues)
-- **Email**: support@vaquero.com
+- **Email**: support@vaquero.app
 
 ## License
 

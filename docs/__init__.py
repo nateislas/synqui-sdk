@@ -1,1 +1,1 @@
-# Documentation package for CognitionFlow SDK
+# Documentation package for Vaquero SDK

@@ -385,7 +385,7 @@ async def process_large_dataset(dataset: List[Dict[str, Any]], batch_size: int =
 
 async def main():
     """Run advanced examples."""
-    print("🚀 Running Advanced CognitionFlow SDK Examples")
+    print("🚀 Running Advanced Vaquero SDK Examples")
     print("=" * 60)
     
     # Setup custom SDK

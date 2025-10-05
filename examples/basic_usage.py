@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Basic Usage Examples for CognitionFlow SDK
+Basic Usage Examples for Vaquero SDK
 
-This file demonstrates the core functionality of the CognitionFlow SDK
+This file demonstrates the core functionality of the Vaquero SDK
 with practical examples for different use cases.
 """
 
@@ -162,7 +162,7 @@ def resilient_operation(data: Dict[str, Any], max_retries: int = 3) -> Dict[str,
 
 def main():
     """Run all examples."""
-    print("🚀 Running CognitionFlow SDK Examples")
+    print("🚀 Running Vaquero SDK Examples")
     print("=" * 50)
     
     # Example 1: Simple sync function

@@ -1,1 +1,1 @@
-# Examples package for CognitionFlow SDK
+# Examples package for Vaquero SDK

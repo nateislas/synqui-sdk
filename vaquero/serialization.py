@@ -1,4 +1,4 @@
-"""Safe serialization utilities for the CognitionFlow SDK."""
+"""Safe serialization utilities for the Vaquero SDK."""
 
 import json
 import logging

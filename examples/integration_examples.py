@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Integration Examples for CognitionFlow SDK
+Integration Examples for Vaquero SDK
 
-This file demonstrates how to integrate CognitionFlow SDK with popular
+This file demonstrates how to integrate Vaquero SDK with popular
 Python frameworks and libraries.
 """
 
@@ -11,7 +11,7 @@ import time
 import json
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
-import cognitionflow
+import vaquero
 
 # Configure SDK for integration examples
 vaquero.configure(
@@ -24,7 +24,7 @@ vaquero.configure(
 # Example 1: FastAPI Integration
 def fastapi_integration_example():
     """
-    Example of integrating CognitionFlow with FastAPI.
+    Example of integrating Vaquero with FastAPI.
     
     This would typically be in a separate file like main.py
     """
@@ -35,10 +35,10 @@ def fastapi_integration_example():
     from fastapi.middleware.base import BaseHTTPMiddleware
     import time
     
-    app = FastAPI(title="CognitionFlow Integration Example")
+    app = FastAPI(title="Vaquero Integration Example")
     
     # Middleware for automatic request tracing
-    class CognitionFlowMiddleware(BaseHTTPMiddleware):
+    class VaqueroMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
             with vaquero.span("http_request") as span:
                 span.set_attribute("method", request.method)
@@ -54,7 +54,7 @@ def fastapi_integration_example():
                 
                 return response
     
-    app.add_middleware(CognitionFlowMiddleware)
+    app.add_middleware(VaqueroMiddleware)
     
     @app.get("/users/{user_id}")
     @vaquero.trace(agent_name="user_service")
@@ -79,7 +79,7 @@ def fastapi_integration_example():
 
 # Example 2: SQLAlchemy Integration
 class SQLAlchemyIntegration:
-    """Example of integrating CognitionFlow with SQLAlchemy."""
+    """Example of integrating Vaquero with SQLAlchemy."""
     
     def __init__(self):
         self.queries_executed = 0
@@ -143,7 +143,7 @@ class SQLAlchemyIntegration:
 
 # Example 3: Celery Task Integration
 class CeleryIntegration:
-    """Example of integrating CognitionFlow with Celery tasks."""
+    """Example of integrating Vaquero with Celery tasks."""
     
     @staticmethod
     @vaquero.trace(agent_name="celery_worker")
@@ -187,7 +187,7 @@ class CeleryIntegration:
 # Example 4: Django Integration
 def django_integration_example():
     """
-    Example of integrating CognitionFlow with Django.
+    Example of integrating Vaquero with Django.
     
     This would typically be in Django settings and middleware files.
     """
@@ -195,7 +195,7 @@ def django_integration_example():
     # Django integration code (commented out since we don't have Django installed)
     """
     # In settings.py
-    import cognitionflow
+    import vaquero
     
     # Configure SDK
     vaquero.configure(
@@ -208,13 +208,13 @@ def django_integration_example():
     from django.utils.deprecation import MiddlewareMixin
     import time
     
-    class CognitionFlowMiddleware(MiddlewareMixin):
+    class VaqueroMiddleware(MiddlewareMixin):
         def process_request(self, request):
-            request._cognitionflow_start_time = time.time()
+            request._vaquero_start_time = time.time()
             
         def process_response(self, request, response):
-            if hasattr(request, '_cognitionflow_start_time'):
-                duration = time.time() - request._cognitionflow_start_time
+            if hasattr(request, '_vaquero_start_time'):
+                duration = time.time() - request._vaquero_start_time
                 
                 with vaquero.span("django_request") as span:
                     span.set_attribute("method", request.method)
@@ -245,7 +245,7 @@ def django_integration_example():
 
 # Example 5: Flask Integration
 class FlaskIntegration:
-    """Example of integrating CognitionFlow with Flask."""
+    """Example of integrating Vaquero with Flask."""
     
     def __init__(self):
         self.request_count = 0
@@ -292,7 +292,7 @@ class FlaskIntegration:
 
 # Example 6: AsyncIO Integration
 class AsyncIOIntegration:
-    """Example of integrating CognitionFlow with AsyncIO patterns."""
+    """Example of integrating Vaquero with AsyncIO patterns."""
     
     @vaquero.trace(agent_name="asyncio_worker")
     async def process_concurrent_tasks(self, tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -400,7 +400,7 @@ class FrameworkContext:
 
 async def main():
     """Run integration examples."""
-    print("🚀 Running CognitionFlow SDK Integration Examples")
+    print("🚀 Running Vaquero SDK Integration Examples")
     print("=" * 60)
     
     # FastAPI integration
@@ -457,7 +457,7 @@ async def main():
         print("   Database transaction completed")
     
     print("\n✅ All integration examples completed!")
-    print("\nNote: These examples show how to integrate CognitionFlow with popular frameworks.")
+    print("\nNote: These examples show how to integrate Vaquero with popular frameworks.")
     print("Choose the integration pattern that best fits your application architecture.")
 
 if __name__ == "__main__":

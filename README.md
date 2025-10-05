@@ -478,5 +478,5 @@ make lint          # Code quality</pre>
 ---
 
 <div align="center">
-  <p><strong>Need help?</strong> Join our <a href="https://discord.gg/vaquero">Discord community</a> or email <a href="mailto:support@vaquero.com">support@vaquero.com</a></p>
+  <p><strong>Need help?</strong> Join our <a href="https://discord.gg/vaquero">Discord community</a> or email <a href="mailto:support@vaquero.app">support@vaquero.app</a></p>
 </div>

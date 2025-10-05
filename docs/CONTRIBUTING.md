@@ -32,13 +32,13 @@ This project adheres to a code of conduct. By participating, you are expected to
 1. Fork the repository on GitHub
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/your-username/cognitionflow-python.git
-   cd cognitionflow-python
+   git clone https://github.com/your-username/vaquero-python.git
+   cd vaquero-python
    ```
 
 3. Add the upstream repository:
    ```bash
-   git remote add upstream https://github.com/cognitionflow/cognitionflow-python.git
+   git remote add upstream https://github.com/vaquero/vaquero-python.git
    ```
 
 ## Development Setup
@@ -51,8 +51,8 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Using conda
-conda create -n cognitionflow python=3.11
-conda activate cognitionflow
+conda create -n vaquero python=3.11
+conda activate vaquero
 ```
 
 ### 2. Install Development Dependencies
@@ -381,15 +381,15 @@ Recommended plugins:
 ### Resources
 
 - **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
-- **GitHub Issues**: [https://github.com/cognitionflow/cognitionflow-python/issues](https://github.com/cognitionflow/cognitionflow-python/issues)
-- **Discussions**: [https://github.com/cognitionflow/cognitionflow-python/discussions](https://github.com/cognitionflow/cognitionflow-python/discussions)
+- **GitHub Issues**: [https://github.com/vaquero/vaquero-python/issues](https://github.com/vaquero/vaquero-python/issues)
+- **Discussions**: [https://github.com/vaquero/vaquero-python/discussions](https://github.com/vaquero/vaquero-python/discussions)
 - **Email**: dev@vaquero.com
 
 ### Community
 
 - **Slack**: [Vaquero Community](https://vaquero.slack.com)
-- **Discord**: [Vaquero Discord](https://discord.gg/cognitionflow)
-- **Twitter**: [@Vaquero](https://twitter.com/cognitionflow)
+- **Discord**: [Vaquero Discord](https://discord.gg/vaquero)
+- **Twitter**: [@Vaquero](https://twitter.com/vaquero)
 
 ## Recognition
 

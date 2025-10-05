@@ -102,7 +102,7 @@ Monitor Celery tasks, Redis operations, and distributed processing.
 
 Ready to get started? Jump to the **[Quick Start guide](./quick-start.md)** or explore **[common patterns](./patterns/)** for practical examples.
 
-Need help? Check out the **[troubleshooting guide](./troubleshooting.md)** or **[contact support](mailto:support@vaquero.com)**.
+Need help? Check out the **[troubleshooting guide](./troubleshooting.md)** or **[contact support](mailto:support@vaquero.app)**.
 
 ---
 

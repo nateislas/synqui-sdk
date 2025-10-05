@@ -1,4 +1,4 @@
-"""Example demonstrating automatic token counting in CognitionFlow SDK.
+"""Example demonstrating automatic token counting in Vaquero SDK.
 
 This example shows how the SDK automatically counts tokens for LLM calls
 and regular function calls, providing accurate cost estimation and
@@ -6,7 +6,7 @@ performance monitoring.
 """
 
 import asyncio
-import cognitionflow
+import vaquero
 from typing import Dict, Any, List
 
 
@@ -83,7 +83,7 @@ async def research_topic(topic: str, depth: str = "shallow") -> Dict[str, Any]:
 
 async def main():
     """Main example function."""
-    print("🚀 CognitionFlow Token Counting Example")
+    print("🚀 Vaquero Token Counting Example")
     print("=" * 50)
     
     # Example 1: Simple LLM call
@@ -113,7 +113,7 @@ async def main():
     
     # Flush any pending traces
     vaquero.flush()
-    print("\n✅ All traces sent to CognitionFlow!")
+    print("\n✅ All traces sent to Vaquero!")
 
 
 if __name__ == "__main__":

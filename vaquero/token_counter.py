@@ -1,4 +1,4 @@
-"""Token counting utilities for the CognitionFlow SDK.
+"""Token counting utilities for the Vaquero SDK.
 
 This module provides automatic token counting for various LLM providers
 and text inputs, enabling accurate cost estimation and performance monitoring.
