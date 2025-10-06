@@ -268,7 +268,6 @@ MODE_PRESETS = {
         "auto_instrument_llm": True,
         "capture_system_prompts": True,
         "detect_agent_frameworks": True,
-        "debug": True,
         "batch_size": 10,
         "flush_interval": 2.0,
     },
@@ -281,7 +280,6 @@ MODE_PRESETS = {
         "auto_instrument_llm": False,
         "capture_system_prompts": False,
         "detect_agent_frameworks": False,
-        "debug": False,
         "batch_size": 100,
         "flush_interval": 5.0,
     }
