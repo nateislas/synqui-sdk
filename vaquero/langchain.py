@@ -39,7 +39,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         self,
         sdk: Optional[VaqueroSDK] = None,
         redact_prompts: bool = True,
-        redact_outputs: bool = True
+        redact_outputs: bool = True,
+        parent_context: Optional[Dict[str, Any]] = None
     ):
         """Initialize the callback handler.
 
@@ -47,6 +48,7 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             sdk: Vaquero SDK instance to use. If None, uses the global instance.
             redact_prompts: Whether to redact prompt content in traces
             redact_outputs: Whether to redact output content in traces
+            parent_context: Parent span context to inherit (session_id, parent_span_id, etc.)
         """
         if not LANGCHAIN_AVAILABLE:
             raise ImportError(
@@ -57,6 +59,7 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         self.sdk = sdk or get_global_instance()
         self.redact_prompts = redact_prompts
         self.redact_outputs = redact_outputs
+        self.parent_context = parent_context or {}
         # Track active spans and their context managers so we can close on *_end
         # Structure: run_id -> {"span": TraceData, "cm": context_manager}
         self._spans = {}
@@ -67,7 +70,11 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         span_name = serialized.get("name", "chain") if isinstance(serialized, dict) else "chain"
 
         # Create and keep the span open until on_chain_end/on_chain_error
-        cm = self.sdk._span_context_manager(f"langchain:{span_name}")
+        # Pass parent context to maintain trace hierarchy
+        cm = self.sdk._span_context_manager(
+            f"langchain:{span_name}",
+            metadata=self.parent_context
+        )
         span = cm.__enter__()
         self._spans[run_id] = {"span": span, "cm": cm}
 
@@ -123,8 +130,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         model_name = serialized.get("kwargs", {}).get("model", "unknown") if isinstance(serialized, dict) else "unknown"
         span_name = f"llm:{model_name}"
 
-        # Keep LLM span open
-        cm = self.sdk._span_context_manager(span_name)
+        # Keep LLM span open with parent context
+        cm = self.sdk._span_context_manager(span_name, metadata=self.parent_context)
         span = cm.__enter__()
         self._spans[run_id] = {"span": span, "cm": cm}
 
@@ -196,7 +203,7 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         tool_name = serialized.get("name", "tool") if isinstance(serialized, dict) else "tool"
         span_name = f"tool:{tool_name}"
 
-        cm = self.sdk._span_context_manager(span_name)
+        cm = self.sdk._span_context_manager(span_name, metadata=self.parent_context)
         span = cm.__enter__()
         self._spans[run_id] = {"span": span, "cm": cm}
 
@@ -250,7 +257,7 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         retriever_name = serialized.get("name", "retriever") if isinstance(serialized, dict) else "retriever"
         span_name = f"retriever:{retriever_name}"
 
-        cm = self.sdk._span_context_manager(span_name)
+        cm = self.sdk._span_context_manager(span_name, metadata=self.parent_context)
         span = cm.__enter__()
         self._spans[run_id] = {"span": span, "cm": cm}
 
@@ -381,7 +388,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
 def get_vaquero_handler(
     sdk: Optional[VaqueroSDK] = None,
     redact_prompts: bool = True,
-    redact_outputs: bool = True
+    redact_outputs: bool = True,
+    parent_context: Optional[Dict[str, Any]] = None
 ) -> VaqueroCallbackHandler:
     """Get a configured Vaquero callback handler for LangChain.
 
@@ -392,6 +400,7 @@ def get_vaquero_handler(
         sdk: Vaquero SDK instance to use. If None, uses the global instance.
         redact_prompts: Whether to redact prompt content in traces
         redact_outputs: Whether to redact output content in traces
+        parent_context: Parent span context to inherit (session_id, parent_span_id, etc.)
 
     Returns:
         Configured VaqueroCallbackHandler instance
@@ -402,4 +411,4 @@ def get_vaquero_handler(
         handler = get_vaquero_handler()
         chain.invoke(input, config={"callbacks": [handler]})
     """
-    return VaqueroCallbackHandler(sdk=sdk, redact_prompts=redact_prompts, redact_outputs=redact_outputs)
+    return VaqueroCallbackHandler(sdk=sdk, redact_prompts=redact_prompts, redact_outputs=redact_outputs, parent_context=parent_context)

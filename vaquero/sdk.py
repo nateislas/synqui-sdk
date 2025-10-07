@@ -16,6 +16,7 @@ from .context import span_context, create_child_span
 from .serialization import safe_serialize
 from .batch_processor import BatchProcessor
 from .trace_collector import TraceCollector
+from .trace_collector_v2 import TraceCollectorV2
 from .token_counter import count_function_tokens, extract_tokens_from_llm_response
 from .auto_instrumentation import AutoInstrumentationEngine
 
@@ -46,7 +47,7 @@ class VaqueroSDK:
         self.config = config
         self._event_queue: Queue = Queue()
         self._batch_processor: Optional[BatchProcessor] = None
-        self._trace_collector: Optional[TraceCollector] = None
+        self._trace_collector: Optional[TraceCollectorV2] = None
         self._enabled = config.enabled
         self._auto_instrumentation: Optional[AutoInstrumentationEngine] = None
 
@@ -72,7 +73,7 @@ class VaqueroSDK:
     def _start_trace_collector(self):
         """Start the simple trace collector."""
         if self._trace_collector is None:
-            self._trace_collector = TraceCollector(self)
+            self._trace_collector = TraceCollectorV2(self)
             logger.debug("Trace collector started")
     
     def _start_auto_instrumentation(self):
@@ -695,15 +696,8 @@ class VaqueroSDK:
             # Convert TraceData to dictionary for trace collector
             span_data = trace_data.to_dict()
             
-            # Check if this is a root span (workflow span)
-            if not trace_data.parent_span_id:
-                # This is a root span - start a new trace
-                logger.info(f"SDK: Starting new trace: {trace_data.span_id}")
-                self._trace_collector.start_trace(trace_data.span_id, span_data)
-            else:
-                # This is a child span - add to current trace
-                logger.info(f"SDK: Adding span to current trace: {trace_data.agent_name}")
-                self._trace_collector.add_span(span_data)
+            # Process the span with the trace collector
+            self._trace_collector.process_span(span_data)
             
             # If this is a root span and it's finished, end the trace
             if not trace_data.parent_span_id and trace_data.status != SpanStatus.RUNNING:
