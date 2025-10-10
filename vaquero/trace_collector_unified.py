@@ -170,27 +170,11 @@ class UnifiedTraceCollector:
             # Create agents data
             agents_data = []
             for agent in hierarchical_trace.agents:
-                # Extract LLM information from spans if this is an LLM component
-                llm_model_name = None
-                llm_model_provider = None
-                system_prompt = None
-
-                # Check if this agent has any LLM spans in its components
-                agent_name = agent.get('name', '')
-                # Get the processor for this trace to access internal components
-                processor = self.trace_processors.get(trace_id)
-                if processor and hasattr(processor, 'internal_components') and agent_name in processor.internal_components:
-                    for component_span in processor.internal_components[agent_name]:
-                        if component_span.get('agent_name', '').startswith('llm:'):
-                            # Extract model info from the LLM span
-                            if hasattr(component_span, 'model_name'):
-                                llm_model_name = component_span.model_name
-                                llm_model_provider = getattr(component_span, 'model_provider', None)
-                            # Extract system prompt from the LLM span
-                            if hasattr(component_span, 'system_prompt'):
-                                system_prompt = component_span.system_prompt
-                            # Only need the first LLM span's info
-                            break
+                # Use model information that was already extracted by the processor
+                llm_model_name = agent.get('llm_model_name')
+                llm_model_provider = agent.get('llm_model_provider')
+                llm_model_parameters = agent.get('llm_model_parameters')
+                system_prompt = agent.get('system_prompt')
 
                 agent_data = {
                     "trace_id": hierarchical_trace.trace_id,
@@ -212,6 +196,7 @@ class UnifiedTraceCollector:
                     # LLM-specific fields
                     "llm_model_name": llm_model_name,
                     "llm_model_provider": llm_model_provider,
+                    "llm_model_parameters": llm_model_parameters,
                     "system_prompt": system_prompt,
                     # Hierarchical fields
                     "parent_agent_id": agent.get('parent_agent_id'),

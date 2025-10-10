@@ -193,6 +193,9 @@ class LangChainProcessor(FrameworkProcessor):
             # Extract session_id for this agent from its spans
             agent_session_id = trace_session_id
 
+            # Extract model information from spans
+            model_info = self._extract_model_info(agent_data['spans'])
+
             # Create logical agent
             logical_agent = {
                 'trace_id': trace_id,
@@ -214,7 +217,11 @@ class LangChainProcessor(FrameworkProcessor):
                 'input_data': {},
                 'output_data': {},
                 'metadata': {'session_id': agent_session_id} if agent_session_id else {},
-                'framework_metadata': {}
+                'framework_metadata': {},
+                # Add model information
+                'llm_model_name': model_info.get('model_name'),
+                'llm_model_provider': model_info.get('model_provider'),
+                'llm_model_parameters': model_info.get('model_parameters')
             }
             agents.append(logical_agent)
 
@@ -259,6 +266,31 @@ class LangChainProcessor(FrameworkProcessor):
             dependencies=dependencies
         )
     
+    def _extract_model_info(self, spans: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Extract model information from spans."""
+        model_info = {
+            'model_name': None,
+            'model_provider': None,
+            'model_parameters': None
+        }
+        
+        # Debug: Log what's in the spans
+        logger.debug(f"Extracting model info from {len(spans)} spans")
+        for i, span in enumerate(spans):
+            logger.debug(f"Span {i}: {span.get('agent_name', 'unknown')} - model_name: {span.get('model_name')}, model_provider: {span.get('model_provider')}")
+        
+        # Look for model information in spans
+        for span in spans:
+            # Check if span has model information
+            if span.get('model_name'):
+                model_info['model_name'] = span.get('model_name')
+                model_info['model_provider'] = span.get('model_provider')
+                model_info['model_parameters'] = span.get('model_parameters')
+                logger.debug(f"Found model info: {model_info}")
+                break  # Use the first model info found
+        
+        return model_info
+
     def _get_component_type(self, span: Dict[str, Any]) -> str:
         """Determine component type from span data."""
         agent_name = span.get('agent_name', '')
