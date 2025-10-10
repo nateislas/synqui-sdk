@@ -40,7 +40,7 @@ class LangChainProcessor(FrameworkProcessor):
 
             # Add to logical agent
             self.logical_agents[logical_agent]['spans'].append(span_data)
-            self.internal_components[logical_agent].append(span_data)
+            # Don't add logical agent spans to internal_components to avoid duplication
 
             # Record mapping for parent resolution of subsequent spans
             span_id = span_data.get('span_id')
