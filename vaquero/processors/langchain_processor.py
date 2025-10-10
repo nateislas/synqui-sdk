@@ -141,6 +141,15 @@ class LangChainProcessor(FrameworkProcessor):
             elif 'report_agent' in self.logical_agents:
                 return 'report_agent'
 
+        # If this is an LLM call, it belongs to the most recent logical agent
+        elif agent_name.startswith('llm:'):
+            if 'validation_agent' in self.logical_agents:
+                return 'validation_agent'
+            elif 'analysis_agent' in self.logical_agents:
+                return 'analysis_agent'
+            elif 'report_agent' in self.logical_agents:
+                return 'report_agent'
+
         # For other internal components, use the same logic
         if 'validation_agent' in self.logical_agents:
             return 'validation_agent'
