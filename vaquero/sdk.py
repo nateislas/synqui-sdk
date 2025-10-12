@@ -696,10 +696,11 @@ class VaqueroSDK:
             # Process the span with the trace collector
             self._trace_collector.process_span(span_data)
             
-            # If this is a root span and it's finished, end the trace
-            if not trace_data.parent_span_id and trace_data.status != SpanStatus.RUNNING:
-                logger.info(f"SDK: Ending trace: {trace_data.span_id}")
-                self._trace_collector.end_trace(trace_data.span_id, span_data)
+            # NOTE: We do NOT automatically end traces here.
+            # Traces are ended explicitly by:
+            # 1. The span context manager (for @vaquero.trace decorators)
+            # 2. The LangChain callback handler (when the workflow completes)
+            # 3. Manual calls to vaquero.end_trace() by the user
 
         except Exception as e:
             logger.error(f"SDK: FAILED to send trace data for {trace_data.agent_name}: {e}", exc_info=True)

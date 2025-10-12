@@ -77,6 +77,15 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         except Exception:
             self._root_trace_id = None
             self._root_span_id = None
+        
+        # If no root trace context exists, use self._trace_id as the root trace ID
+        # This ensures all spans from this LangChain workflow are grouped together
+        if not self._root_trace_id:
+            self._root_trace_id = self._trace_id
+            logger.debug(f"Using handler trace ID as root trace ID: {self._root_trace_id}")
+        
+        # Track if trace has been finalized
+        self._trace_finalized = False
 
     def on_chain_start(self, serialized, inputs, *, run_id, parent_run_id=None, tags=None, metadata=None, **kwargs):
         """Called when a chain starts."""
@@ -686,6 +695,25 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         except Exception as e:
             # Fallback to string representation with error info
             return f"<SerializationError: {type(data).__name__} - {str(e)}>"
+
+
+    def finalize_trace(self):
+        """Finalize the trace by ending it and sending to the database."""
+        if not self._trace_finalized and self._root_trace_id:
+            logger.debug(f"Finalizing LangChain trace: {self._root_trace_id}")
+            try:
+                # Use the SDK instance from the callback handler
+                if self.sdk and self.sdk._trace_collector:
+                    # End the trace - this will trigger finalization and sending to DB
+                    self.sdk._trace_collector.end_trace(self._root_trace_id, None)
+                    self._trace_finalized = True
+                    logger.info(f"LangChain trace finalized: {self._root_trace_id}")
+            except Exception as e:
+                logger.error(f"Error finalizing LangChain trace: {e}")
+    
+    def __del__(self):
+        """Destructor to ensure trace is finalized when handler is garbage collected."""
+        self.finalize_trace()
 
 
 def get_vaquero_handler(
