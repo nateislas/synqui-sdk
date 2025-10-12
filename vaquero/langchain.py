@@ -82,6 +82,19 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         """Called when a chain starts."""
         span_name = serialized.get("name", "chain") if isinstance(serialized, dict) else "chain"
 
+        # Enhanced metadata for better agent identification
+        enhanced_metadata = self.parent_context.copy()
+        enhanced_metadata.update({
+            "langchain.metadata": {
+                "serialized": serialized,
+                "inputs": inputs,
+                "tags": tags or [],
+                "metadata": metadata or {},
+                "run_id": run_id,
+                "parent_run_id": parent_run_id
+            }
+        })
+
         # Check if we have a current span context from parent workflow (global context)
         current_span = _vaq_get_current_span()
         if current_span:
@@ -89,8 +102,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             span = _vaq_create_child_span(
                 agent_name=f"langchain:{span_name}",
                 function_name=f"langchain:{span_name}",
-                metadata=self.parent_context,
-                tags=self.parent_context.get("tags", {})
+                metadata=enhanced_metadata,
+                tags=enhanced_metadata.get("tags", {})
             )
             # Set up context manager manually for this span
             cm = _vaq_span_context(span)
@@ -100,7 +113,7 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             # Create new context manager if no parent context exists
             cm = self.sdk._span_context_manager(
                 f"langchain:{span_name}",
-                metadata=self.parent_context
+                metadata=enhanced_metadata
             )
             span = cm.__enter__()
             # Force grouping under the root trace when available
@@ -189,6 +202,19 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
 
         span_name = f"llm:{model_name}"
 
+        # Enhanced metadata for better agent identification
+        enhanced_metadata = self.parent_context.copy()
+        enhanced_metadata.update({
+            "langchain.metadata": {
+                "serialized": serialized,
+                "prompts": prompts,
+                "tags": tags or [],
+                "metadata": metadata or {},
+                "run_id": run_id,
+                "parent_run_id": parent_run_id
+            }
+        })
+
         # Check if we have a current span context from parent workflow (global context)
         current_span = _vaq_get_current_span()
         if current_span:
@@ -196,8 +222,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             span = _vaq_create_child_span(
                 agent_name=span_name,
                 function_name=span_name,
-                metadata=self.parent_context,
-                tags=self.parent_context.get("tags", {})
+                metadata=enhanced_metadata,
+                tags=enhanced_metadata.get("tags", {})
             )
             # Set model information on the span
             span.model_name = model_name
@@ -421,6 +447,19 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         tool_name = serialized.get("name", "tool") if isinstance(serialized, dict) else "tool"
         span_name = f"tool:{tool_name}"
 
+        # Enhanced metadata for better agent identification
+        enhanced_metadata = self.parent_context.copy()
+        enhanced_metadata.update({
+            "langchain.metadata": {
+                "serialized": serialized,
+                "input_str": input_str,
+                "tags": tags or [],
+                "metadata": metadata or {},
+                "run_id": run_id,
+                "parent_run_id": parent_run_id
+            }
+        })
+
         # Check if we have a current span context from parent workflow (global context)
         current_span = _vaq_get_current_span()
         if current_span:
@@ -428,8 +467,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             span = _vaq_create_child_span(
                 agent_name=span_name,
                 function_name=span_name,
-                metadata=self.parent_context,
-                tags=self.parent_context.get("tags", {})
+                metadata=enhanced_metadata,
+                tags=enhanced_metadata.get("tags", {})
             )
             # Set up context manager manually for this span
             cm = _vaq_span_context(span)

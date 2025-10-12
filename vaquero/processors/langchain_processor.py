@@ -71,6 +71,8 @@ class LangChainProcessor(FrameworkProcessor):
         except Exception:
             lc_meta = {}
 
+
+
         # Check for explicit stage in metadata - these are logical agents
         stage = metadata.get('stage') or lc_meta.get('stage')
         if stage:
@@ -84,6 +86,40 @@ class LangChainProcessor(FrameworkProcessor):
         # Check if agent_name already looks like a logical agent (ends with '_agent')
         if agent_name.endswith('_agent'):
             return agent_name
+
+        # NEW: For AgentExecutor, try to extract a better name from metadata
+        if agent_name == 'langchain:AgentExecutor':
+            # Debug: Print what we have
+            print(f"DEBUG: Processing AgentExecutor with agent_name='{agent_name}'")
+            print(f"DEBUG: lc_meta keys: {list(lc_meta.keys()) if lc_meta else 'None'}")
+
+            # First priority: Check for agent_name in lc_meta directly (it seems to be at the top level)
+            agent_name_from_config = lc_meta.get('agent_name') if lc_meta else None
+            print(f"DEBUG: agent_name_from_config: {agent_name_from_config}")
+            if agent_name_from_config:
+                return f"langchain:{agent_name_from_config}"
+
+            # Second priority: Try to get the actual agent name from serialized data
+            serialized = lc_meta.get('serialized', {})
+            if isinstance(serialized, dict):
+                # Look for the actual agent name in the serialized data
+                name = serialized.get('name')
+                if name and name != 'AgentExecutor':
+                    return f"langchain:{name}"
+
+            # Third priority: try to get from other metadata
+            chain_name = lc_meta.get('chain_name') or metadata.get('chain_name')
+            if chain_name:
+                return f"langchain:{chain_name}"
+
+            # If we can't find a better name, use a generic but descriptive name
+            return "langchain:AgentExecutor"
+
+        # NEW: For other langchain chains, extract the meaningful part
+        if agent_name.startswith('langchain:') and agent_name != 'langchain:chain':
+            name_part = agent_name.replace('langchain:', '')
+            if name_part != 'chain':
+                return agent_name
 
         # For spans that don't match explicit patterns, check if they're logical agents
         # This is a heuristic based on the span structure and metadata
@@ -120,6 +156,18 @@ class LangChainProcessor(FrameworkProcessor):
         # Check if agent_name already looks like a logical agent (ends with '_agent')
         if agent_name.endswith('_agent'):
             return True
+
+        # NEW: Check if this is an AgentExecutor - these are logical agents
+        if agent_name == 'langchain:AgentExecutor':
+            return True
+
+        # NEW: Check if this is a chain with meaningful name (not just "chain")
+        if agent_name.startswith('langchain:') and agent_name != 'langchain:chain':
+            # Extract the actual name part
+            name_part = agent_name.replace('langchain:', '')
+            # If it's not just "chain", it's likely a logical agent
+            if name_part != 'chain':
+                return True
 
         # Check if this is likely a logical agent based on heuristics
         if self._is_likely_logical_agent(span_data):
@@ -194,9 +242,12 @@ class LangChainProcessor(FrameworkProcessor):
             # Extract session_id for this agent from its spans
             agent_session_id = trace_session_id
 
-            # Extract model information from spans
-            model_info = self._extract_model_info(agent_data['spans'])
-
+            # Get all spans for this logical agent (including internal components)
+            all_spans = agent_data['spans'] + self.internal_components.get(logical_agent_name, [])
+            
+            # Extract model information from all spans
+            model_info = self._extract_model_info(all_spans)
+            
             # Create logical agent
             logical_agent = {
                 'trace_id': trace_id,
@@ -207,12 +258,12 @@ class LangChainProcessor(FrameworkProcessor):
                 'component_type': 'agent',
                 'parent_agent_id': None,
                 'status': 'completed',
-                'start_time': self._get_earliest_start_time(agent_data['spans']),
-                'end_time': self._get_latest_end_time(agent_data['spans']),
-                'duration_ms': self._calculate_duration(agent_data['spans']),
-                'input_tokens': sum(s.get('input_tokens', 0) for s in agent_data['spans']),
-                'output_tokens': sum(s.get('output_tokens', 0) for s in agent_data['spans']),
-                'total_tokens': sum(s.get('total_tokens', 0) for s in agent_data['spans']),
+                'start_time': self._get_earliest_start_time(all_spans),
+                'end_time': self._get_latest_end_time(all_spans),
+                'duration_ms': self._calculate_duration(all_spans),
+                'input_tokens': sum(s.get('input_tokens', 0) for s in all_spans),
+                'output_tokens': sum(s.get('output_tokens', 0) for s in all_spans),
+                'total_tokens': sum(s.get('total_tokens', 0) for s in all_spans),
                 'cost': model_info.get('cost', 0.0),
                 'tags': {'session_id': agent_session_id} if agent_session_id else {},
                 'input_data': {},
