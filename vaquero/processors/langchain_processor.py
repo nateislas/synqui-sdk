@@ -178,7 +178,9 @@ class LangChainProcessor(FrameworkProcessor):
             # Check if this has an explicit agent_name in metadata
             agent_name_from_config = lc_meta.get('agent_name') if lc_meta else None
             if agent_name_from_config:
-                return True
+                # Only classify as logical agent if it's NOT a generic chain
+                if agent_name != 'langchain:chain' and agent_name != 'langchain:AgentExecutor':
+                    return True
 
         # All other spans are internal components
         return False
