@@ -121,10 +121,7 @@ class LangChainProcessor(FrameworkProcessor):
             if name_part != 'chain':
                 return agent_name
 
-        # For spans that don't match explicit patterns, check if they're logical agents
-        # This is a heuristic based on the span structure and metadata
-        if self._is_likely_logical_agent(span_data):
-            return agent_name
+        # For spans that don't match explicit patterns, they are internal components
 
         # For internal LangChain components, try to determine parent from context
         # This is the key intelligence - we need to group internal components
@@ -132,7 +129,7 @@ class LangChainProcessor(FrameworkProcessor):
         return self._determine_parent_from_context(span_data)
 
     def _is_logical_agent_span(self, span_data: Dict[str, Any]) -> bool:
-        """Determine if this span represents a logical business agent."""
+        """Determine if this span represents a logical business agent using explicit rules."""
         agent_name = span_data.get('agent_name', '')
         metadata = span_data.get('metadata', {})
         tags = span_data.get('tags', {}) or {}
@@ -144,56 +141,48 @@ class LangChainProcessor(FrameworkProcessor):
         except Exception:
             lc_meta = {}
 
-        # Check for explicit stage in metadata - these are logical agents
+        # EXCLUDE: LLM spans are internal components, not logical agents
+        if agent_name.startswith('llm:'):
+            return False
+
+        # EXCLUDE: Tool spans are internal components, not logical agents
+        if agent_name.startswith('tool:'):
+            return False
+
+        # EXCLUDE: Generic chain components are internal components
+        if agent_name == 'langchain:chain':
+            return False
+
+        # LOGICAL AGENT: Check for explicit stage in metadata
         stage = metadata.get('stage') or lc_meta.get('stage')
         if stage:
             return True
 
-        # Check for workflow root span - this is also a logical agent
+        # LOGICAL AGENT: Check for workflow root span
         if 'workflow' in agent_name.lower():
             return True
 
-        # Check if agent_name already looks like a logical agent (ends with '_agent')
+        # LOGICAL AGENT: Check if agent_name already looks like a logical agent (ends with '_agent')
         if agent_name.endswith('_agent'):
             return True
 
-        # NEW: Check if this is an AgentExecutor - these are logical agents
+        # LOGICAL AGENT: AgentExecutor with meaningful metadata
         if agent_name == 'langchain:AgentExecutor':
-            return True
-
-        # NEW: Check if this is a chain with meaningful name (not just "chain")
-        if agent_name.startswith('langchain:') and agent_name != 'langchain:chain':
-            # Extract the actual name part
-            name_part = agent_name.replace('langchain:', '')
-            # If it's not just "chain", it's likely a logical agent
-            if name_part != 'chain':
+            # Only classify as logical agent if it has explicit agent_name in metadata
+            agent_name_from_config = lc_meta.get('agent_name') if lc_meta else None
+            if agent_name_from_config:
                 return True
 
-        # Check if this is likely a logical agent based on heuristics
-        if self._is_likely_logical_agent(span_data):
-            return True
+        # LOGICAL AGENT: Custom agent names from metadata
+        if agent_name.startswith('langchain:'):
+            # Check if this has an explicit agent_name in metadata
+            agent_name_from_config = lc_meta.get('agent_name') if lc_meta else None
+            if agent_name_from_config:
+                return True
 
         # All other spans are internal components
         return False
 
-    def _is_likely_logical_agent(self, span_data: Dict[str, Any]) -> bool:
-        """Heuristic to determine if a span is likely a logical agent."""
-        agent_name = span_data.get('agent_name', '')
-        metadata = span_data.get('metadata', {})
-        tags = span_data.get('tags', {}) or {}
-
-        # Check if it has meaningful metadata that suggests it's a logical agent
-        if metadata.get('stage') or metadata.get('agent_type') == 'logical':
-            return True
-
-        # Check if it's a root-level span with significant duration or complexity
-        if (span_data.get('duration_ms', 0) > 100 or  # Significant duration
-            len(tags) > 3 or  # Multiple tags suggest importance
-            metadata.get('session_id') or  # Has session context
-            'workflow' in agent_name.lower()):  # Workflow-related
-            return True
-
-        return False
 
     def _determine_parent_from_context(self, span_data: Dict[str, Any]) -> str:
         """Determine parent logical agent from execution context."""
