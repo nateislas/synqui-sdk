@@ -370,11 +370,20 @@ class LangChainProcessor(FrameworkProcessor):
                 }
                 agents.append(component)
         
+        # Extract metadata from spans (environment, mode, etc.)
+        trace_metadata = {}
+        for span in self.spans:
+            if span.get('metadata'):
+                # Merge metadata from spans
+                trace_metadata.update(span.get('metadata', {}))
+                break  # Use metadata from first span
+        
         return HierarchicalTrace(
             trace_id=trace_id,
             name='workflow_root',
             agents=agents,
-            dependencies=dependencies
+            dependencies=dependencies,
+            metadata=trace_metadata
         )
     
     def _extract_model_info(self, spans: List[Dict[str, Any]]) -> Dict[str, Any]:

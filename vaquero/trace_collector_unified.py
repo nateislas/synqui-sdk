@@ -2,13 +2,27 @@
 
 import logging
 import uuid
+import json
 from typing import Dict, Any, Optional, TYPE_CHECKING
+from datetime import datetime
 from .processors import LangChainProcessor
 
 if TYPE_CHECKING:
     from .sdk import VaqueroSDK
 
 logger = logging.getLogger(__name__)
+
+def json_serializable(obj):
+    """Convert objects to JSON-serializable format."""
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [json_serializable(item) for item in obj]
+    return obj
 
 class UnifiedTraceCollector:
     """Unified trace collector that routes spans to framework-specific processors."""
@@ -155,6 +169,11 @@ class UnifiedTraceCollector:
                     trace_session_id = agent_session_id
                     break
 
+            # Extract environment from metadata
+            trace_environment = None
+            if hierarchical_trace.metadata:
+                trace_environment = hierarchical_trace.metadata.get('environment') or hierarchical_trace.metadata.get('mode')
+            
             trace_data = {
                 "trace_id": hierarchical_trace.trace_id,
                 "name": hierarchical_trace.name,
@@ -163,8 +182,9 @@ class UnifiedTraceCollector:
                 "end_time": trace_end_time.isoformat() if trace_end_time else None,
                 "duration_ms": trace_duration_ms,
                 "session_id": trace_session_id,
+                "environment": trace_environment,
                 "tags": {},
-                "metadata": {}
+                "metadata": hierarchical_trace.metadata or {}
             }
             
             # Create agents data
@@ -256,6 +276,9 @@ class UnifiedTraceCollector:
         try:
             import requests
             
+            # Make batch_data JSON-serializable (convert UUIDs, datetimes, etc.)
+            serializable_data = json_serializable(batch_data)
+            
             # Send to the batch traces API endpoint
             url = f"{self.sdk.config.endpoint}/api/v1/traces/batch"
             headers = {
@@ -263,7 +286,7 @@ class UnifiedTraceCollector:
                 "Content-Type": "application/json"
             }
             
-            response = requests.post(url, json=batch_data, headers=headers, timeout=30)
+            response = requests.post(url, json=serializable_data, headers=headers, timeout=30)
             
             if response.status_code not in [200, 201, 202]:
                 logger.warning(f"Failed to send batch to API: {response.status_code} - {response.text}")

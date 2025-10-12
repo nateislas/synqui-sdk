@@ -11,6 +11,12 @@ class HierarchicalTrace:
     name: str
     agents: List[Dict[str, Any]]
     dependencies: List[Dict[str, Any]]
+    metadata: Dict[str, Any] = None
+    
+    def __post_init__(self):
+        """Initialize metadata if not provided."""
+        if self.metadata is None:
+            self.metadata = {}
 
 class FrameworkProcessor(ABC):
     """Base interface for framework-specific processors."""
