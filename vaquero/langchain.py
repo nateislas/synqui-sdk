@@ -43,16 +43,16 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
     def __init__(
         self,
         sdk: Optional[VaqueroSDK] = None,
-        redact_prompts: bool = True,
-        redact_outputs: bool = True,
+        redact_prompts: bool = False,
+        redact_outputs: bool = False,
         parent_context: Optional[Dict[str, Any]] = None
     ):
         """Initialize the callback handler.
 
         Args:
             sdk: Vaquero SDK instance to use. If None, uses the global instance.
-            redact_prompts: Whether to redact prompt content in traces
-            redact_outputs: Whether to redact output content in traces
+            redact_prompts: Whether to redact prompt content in traces (default: False)
+            redact_outputs: Whether to redact output content in traces (default: False)
             parent_context: Parent span context to inherit (session_id, parent_span_id, etc.)
         """
         if not LANGCHAIN_AVAILABLE:
@@ -727,8 +727,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
 
 def get_vaquero_handler(
     sdk: Optional[VaqueroSDK] = None,
-    redact_prompts: bool = True,
-    redact_outputs: bool = True,
+    redact_prompts: bool = False,
+    redact_outputs: bool = False,
     parent_context: Optional[Dict[str, Any]] = None
 ) -> VaqueroCallbackHandler:
     """Get a configured Vaquero callback handler for LangChain.
@@ -738,8 +738,8 @@ def get_vaquero_handler(
 
     Args:
         sdk: Vaquero SDK instance to use. If None, uses the global instance.
-        redact_prompts: Whether to redact prompt content in traces
-        redact_outputs: Whether to redact output content in traces
+        redact_prompts: Whether to redact prompt content in traces (default: False)
+        redact_outputs: Whether to redact output content in traces (default: False)
         parent_context: Parent span context to inherit (session_id, parent_span_id, etc.)
 
     Returns:
