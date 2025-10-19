@@ -1,8 +1,8 @@
-# 🚀 Installation & Setup
+# Installation & Setup
 
 Get up and running with Vaquero in under 5 minutes.
 
-## 📦 Installation
+## Installation
 
 ### Option 1: PyPI (Recommended)
 ```bash
@@ -21,7 +21,7 @@ pip install -e .
 pip install vaquero-sdk[all]  # Includes optional integrations
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Step 1: Get Your API Key
 
@@ -32,7 +32,7 @@ pip install vaquero-sdk[all]  # Includes optional integrations
 ### Step 2: Initialize the SDK
 
 #### Option A: Project-Scoped Key (Recommended)
-```python
+```python title="Simple Initialization"
 import vaquero
 
 # Simple initialization (recommended)
@@ -45,7 +45,7 @@ vaquero.init()  # Uses environment variable
 ```
 
 #### Option B: General API Key + Project ID
-```python
+```python title="With Project ID"
 import vaquero
 
 vaquero.init(
@@ -55,8 +55,7 @@ vaquero.init(
 ```
 
 ### Step 3: Verify Installation
-
-```python
+```python title="Verification Check"
 import vaquero
 
 # Check if SDK is ready
@@ -66,11 +65,11 @@ else:
     print("❌ SDK configuration issue")
 ```
 
-## 🌍 Environment Variables
+## Environment Variables
 
 Configure via environment variables for easy deployment:
 
-```bash
+```bash title="Environment Configuration"
 # Required
 export VAQUERO_API_KEY="cf_your-project-scoped-key-here"
 
@@ -81,10 +80,10 @@ export VAQUERO_BATCH_SIZE="100"
 export VAQUERO_FLUSH_INTERVAL="5.0"
 ```
 
-## 🔧 Configuration Options
+## Configuration Options
 
 ### Basic Configuration
-```python
+```python title="Basic Setup"
 from vaquero import SDKConfig
 
 config = SDKConfig(
@@ -98,7 +97,7 @@ vaquero.init(config=config)
 ```
 
 ### Advanced Configuration
-```python
+```python title="Production Configuration"
 config = SDKConfig(
     api_key="your-api-key",
     project_id="your-project-id",
@@ -117,10 +116,10 @@ config = SDKConfig(
 vaquero.init(config=config)
 ```
 
-## 🚨 Common Issues
+## Common Issues
 
 ### "SDK not initialized" Error
-```python
+```python title="Initialization Order"
 # Make sure to call init() before using the SDK
 import vaquero
 vaquero.init(api_key="your-key")  # ← Don't forget this!
@@ -131,7 +130,7 @@ def my_function():
 ```
 
 ### Environment Variables Not Working
-```bash
+```bash title="Environment Setup"
 # Make sure to export, not just set
 export VAQUERO_API_KEY="your-key"  # ✅ Correct
 VAQUERO_API_KEY="your-key"         # ❌ Wrong
@@ -140,7 +139,7 @@ VAQUERO_API_KEY="your-key"         # ❌ Wrong
 ```
 
 ### API Key Issues
-```python
+```python title="Key Validation"
 # Check your API key format
 # Project-scoped: cf_PfnOhuv9UPLYpU_9o1gr6s1q27JNv7lbFspUR_aoFAM
 # General: cf_l5-XPrTnnqk4H42pbchNrdcR5KvGUrpMH3tG6bgw6GE
@@ -150,10 +149,10 @@ import vaquero
 vaquero.init(api_key="your-key")
 ```
 
-## ✅ Verification
+## Verification
 
 ### Test Your Setup
-```python
+```python title="Setup Verification"
 import vaquero
 
 # Initialize SDK
@@ -179,7 +178,7 @@ print(f"Traces sent: {stats.get('traces_sent', 0)}")
 2. Look for your test trace in the trace explorer
 3. Verify the trace details and metadata
 
-## 🎯 Next Steps
+## Next Steps
 
 Now that you have Vaquero set up:
 
@@ -187,7 +186,7 @@ Now that you have Vaquero set up:
 2. **[→ Access the dashboard](./dashboard-access.md)** - Explore your trace data
 3. **[→ Integrate with LangChain](../agent-frameworks/langchain-integration.md)** - For AI agent workflows
 
-## 🆘 Need Help?
+## Need Help?
 
 - **Documentation**: [Complete SDK Reference](../sdk-reference/)
 - **Community**: [Discord](https://discord.gg/vaquero)

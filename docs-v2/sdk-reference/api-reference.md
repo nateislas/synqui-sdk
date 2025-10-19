@@ -1,14 +1,14 @@
-# 📚 API Reference
+# API Reference
 
 Complete reference for all Vaquero SDK functions, classes, and configuration options.
 
-## 🚀 Core Functions
+## Core Functions
 
 ### `vaquero.init()`
 
 Initialize the Vaquero SDK.
 
-```python
+```python title="Function Signature"
 def init(
     api_key: str | None = None,
     project_id: str | None = None,
@@ -28,7 +28,7 @@ def init(
 - `**kwargs`: Additional configuration options
 
 **Examples:**
-```python
+```python title="Simple Initialization"
 # Simple initialization
 vaquero.init(api_key="cf_your-key-here")
 
@@ -57,7 +57,7 @@ vaquero.init(config=config)
 
 Decorator for tracing function execution.
 
-```python
+```python title="Function Signature"
 def trace(
     agent_name: str,
     tags: dict[str, str] | None = None,
@@ -75,7 +75,7 @@ def trace(
 - `capture_errors` (bool, optional): Override global error capture setting
 
 **Examples:**
-```python
+```python title="Basic Usage"
 @vaquero.trace("data_processor")
 def process_data(data: dict) -> dict:
     return {"result": data}
@@ -100,7 +100,7 @@ async def call_external_api(data: dict) -> dict:
 
 Context manager for manual span creation.
 
-```python
+```python title="Function Signature"
 def span(
     name: str,
     attributes: dict[str, Any] | None = None,
@@ -114,7 +114,7 @@ def span(
 - `tags` (dict, optional): Tags for categorization
 
 **Examples:**
-```python
+```python title="Manual Span Usage"
 # Sync usage
 with vaquero.span("database_query") as span:
     span.set_attribute("table", "users")
@@ -140,7 +140,7 @@ with vaquero.span("user_registration") as parent_span:
         user = create_user({"email": "user@example.com"})
 ```
 
-## 🏗️ Classes
+## Classes
 
 ### `SDKConfig`
 

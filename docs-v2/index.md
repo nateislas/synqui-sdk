@@ -1,37 +1,58 @@
-# 🚀 Vaquero Python SDK Documentation
+# Vaquero Python SDK Documentation
 
 <div align="center">
-  <h2>Comprehensive observability and tracing for AI agents and applications</h2>
-  <p><strong>Zero-config tracing</strong> • <strong>LangChain integration</strong> • <strong>AI-powered insights</strong></p>
+  <h2>🔬 AI-Native Observability Platform</h2>
+  <p><strong>Built specifically for LLM applications, agent workflows, and AI system debugging</strong></p>
 </div>
 
 ---
 
-## 🎯 What is Vaquero?
+## What is Vaquero?
 
-Vaquero is an **observability platform** designed specifically for AI agents and applications. Unlike traditional monitoring tools, Vaquero understands the unique challenges of AI workflows:
+**Vaquero** is an open-source observability platform designed specifically for AI agents and LLM applications. Unlike traditional monitoring tools, Vaquero understands the unique complexity of AI systems and provides the insights you need to debug, optimize, and scale your AI workflows.
 
-- **Agent execution flows** with complex tool calling patterns
-- **LLM interactions** with automatic token and cost tracking
-- **Multi-step reasoning** processes that traditional tools miss
-- **Performance bottlenecks** in AI pipelines
+### Why Vaquero?
 
-## 🚀 Quick Start
+- **🤖 AI-First Design** - Built from the ground up for LLM applications and agent workflows
+- **🔍 Zero-Configuration Tracing** - `@vaquero.trace()` decorator works instantly out of the box
+- **⚡ Production Ready** - Enterprise-grade reliability with batching, retries, and error handling
+- **💡 AI-Powered Insights** - Automatic analysis of trace patterns with actionable recommendations
+- **🔧 Framework Agnostic** - Works with any AI framework (LangChain, LlamaIndex, custom agents, etc.)
+
+## Architecture
+
+```mermaid
+graph TB
+    A[🤖 AI Application<br/>LangChain, Custom Agents] --> B[🔍 Vaquero SDK<br/>@vaquero.trace()]
+    B --> C[📦 Batch Processing<br/>Intelligent Batching]
+    C --> D[🌐 API Ingestion<br/>Secure Transport]
+    D --> E[📊 Dashboard<br/>Real-time Analytics]
+    E --> F[💡 AI Insights<br/>Performance Optimization]
+
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#fce4ec
+    style F fill:#f1f8e9
+```
+
+## Quick Start
 
 Get started in 3 simple steps:
 
 <div class="quick-start-grid">
 
-### 1️⃣ Install & Configure
-```python
+### 1. Install & Configure
+```python title="Installation"
 pip install vaquero-sdk
 
 import vaquero
-vaquero.init(api_key="your-project-key")
+vaquero.init(api_key="cf_your-project-key-here")
 ```
 
-### 2️⃣ Add Tracing
-```python
+### 2. Add Tracing
+```python title="Basic Tracing"
 @vaquero.trace("my_agent")
 def process_data(data):
     # Your AI logic here
@@ -44,50 +65,40 @@ handler = get_vaquero_handler()
 chain.invoke(input, config={"callbacks": [handler]})
 ```
 
-### 3️⃣ Analyze Results
-```python
+### 3. Analyze Results
+```python title="Dashboard Access"
 # Traces automatically appear in your dashboard
-# Access insights and performance data
+# Access comprehensive insights and performance analytics
 ```
-
-</div>
 
 **[→ Start Here: Installation & Setup](./quick-start/setup.md)**
 
 ---
 
-## 📚 Documentation Sections
-
-<div class="docs-sections">
+## Documentation Sections
 
 | Section | Description | Primary Audience |
 |---------|-------------|------------------|
-| **[🚀 Quick Start](./quick-start/)** | Get up and running in minutes | **New users** |
-| **[🔧 SDK Reference](./sdk-reference/)** | Complete API and configuration guide | **Developers** |
-| **[🤖 Agent Frameworks](./agent-frameworks/)** | Framework-specific integration guides | **AI engineers** |
-| **[📊 Observability Platform](./observability-platform/)** | Dashboard and insights guide | **Everyone** |
-| **[🛠️ Advanced Usage](./advanced-usage/)** | Production deployment and optimization | **Platform teams** |
-
-</div>
+| **[Quick Start](./quick-start/)** | Get up and running in minutes | **New users** |
+| **[SDK Reference](./sdk-reference/)** | Complete API and configuration guide | **Developers** |
+| **[Agent Frameworks](./agent-frameworks/)** | Framework-specific integration guides | **AI engineers** |
+| **[Observability Platform](./observability-platform/)** | Dashboard and insights guide | **Everyone** |
+| **[Advanced Usage](./advanced-usage/)** | Production deployment and optimization | **Platform teams** |
 
 ---
 
-## 🎯 Use Cases
+## Use Cases
 
-<div class="use-cases-grid">
-
-### **🔧 AI Agent Development**
-```python
-# LangChain integration with automatic tracing
+### AI Agent Development
+```python title="LangChain Integration"
 from vaquero.langchain import get_vaquero_handler
 
 handler = get_vaquero_handler(parent_context={"team": "research"})
 llm_chain.invoke(input, config={"callbacks": [handler]})
 ```
 
-### **📊 Data Processing Pipelines**
-```python
-# Multi-step workflows with comprehensive observability
+### Data Processing Pipelines
+```python title="Multi-Step Workflows"
 @vaquero.trace("data_pipeline")
 async def process_dataset(dataset):
     # Step 1: Schema analysis
@@ -96,9 +107,8 @@ async def process_dataset(dataset):
     # All steps automatically traced and analyzed
 ```
 
-### **🔍 LLM Application Monitoring**
-```python
-# Automatic LLM call instrumentation
+### LLM Application Monitoring
+```python title="Automatic Instrumentation"
 vaquero.init(auto_instrument_llm=True)
 
 # OpenAI, Anthropic, and other LLM calls
@@ -106,74 +116,60 @@ vaquero.init(auto_instrument_llm=True)
 response = client.chat.completions.create(...)
 ```
 
-### **⚡ Performance Optimization**
-```python
+### Performance Optimization
+```python title="AI-Powered Insights"
 # Identify bottlenecks and optimization opportunities
 # Dashboard shows slow operations, error patterns
 # AI insights suggest specific improvements
 ```
 
-</div>
-
 ---
 
-## 🎨 Key Features
-
-<div class="features-grid">
+## Key Features
 
 | Feature | Description | Benefit |
 |---------|-------------|---------|
-| **🔍 Zero-Config Tracing** | `@vaquero.trace()` decorator works instantly | Start monitoring immediately |
-| **🤖 LangChain Integration** | Built-in callback handlers for LCEL chains | Seamless agent observability |
-| **📊 AI-Powered Insights** | Automatic analysis of trace patterns | Proactive optimization suggestions |
-| **🎛️ Dashboard Analytics** | Visual trace exploration and performance monitoring | Self-service debugging |
-| **⚡ Production Ready** | Circuit breakers, batching, error handling | Enterprise-grade reliability |
-| **🔧 Framework Agnostic** | Works with any agent framework | Future-proof architecture |
-
-</div>
+| **Zero-Configuration Tracing** | `@vaquero.trace()` decorator works instantly | Start monitoring immediately |
+| **LangChain Integration** | Built-in callback handlers for LCEL chains | Seamless agent observability |
+| **AI-Powered Insights** | Automatic analysis of trace patterns | Proactive optimization suggestions |
+| **Dashboard Analytics** | Visual trace exploration and performance monitoring | Self-service debugging |
+| **Production Ready** | Circuit breakers, batching, error handling | Enterprise-grade reliability |
+| **Framework Agnostic** | Works with any agent framework | Future-proof architecture |
 
 ---
 
-## 🚦 Getting Help
+## Getting Help
 
-<div class="help-grid">
-
-### **📖 Documentation**
+### Documentation
 - **[Complete Guides](./sdk-reference/)** - Detailed setup and configuration
 - **[Framework Examples](./agent-frameworks/)** - Framework-specific patterns
 - **[Dashboard Guide](./observability-platform/)** - Analytics and insights
 
-### **💬 Community**
+### Community
 - **[Discord Community](https://discord.gg/vaquero)** - Get help and share experiences
 - **[GitHub Issues](https://github.com/vaquero/vaquero-python/issues)** - Report bugs and request features
 
-### **📧 Support**
+### Support
 - **Email**: support@vaquero.app
 - **Response Time**: < 24 hours for enterprise customers
 
-</div>
-
 ---
 
-## 🎯 Next Steps
+## Next Steps
 
 Ready to get started? Choose your path:
 
-<div class="next-steps">
-
-### **🆕 New to Vaquero?**
+### New to Vaquero?
 **[→ Start with Quick Start](./quick-start/setup.md)** - 5-minute setup guide
 
-### **🔄 Migrating from v1?**
+### Migrating from v1?
 **[→ Migration Guide](./quick-start/migration.md)** - Upgrade your existing setup
 
-### **🤖 Building AI Agents?**
+### Building AI Agents?
 **[→ LangChain Integration](./agent-frameworks/langchain-integration.md)** - Best practices for agent observability
 
-### **📊 Need Analytics?**
+### Need Analytics?
 **[→ Dashboard Guide](./observability-platform/dashboard-overview.md)** - Master trace analysis and insights
-
-</div>
 
 ---
 

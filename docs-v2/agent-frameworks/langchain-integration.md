@@ -1,8 +1,8 @@
-# 🤖 LangChain Integration
+# LangChain Integration
 
 Seamlessly integrate Vaquero observability into your LangChain applications. This is the primary use case for Vaquero - providing comprehensive tracing for AI agent workflows.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 ```bash
@@ -10,7 +10,7 @@ pip install vaquero-sdk langchain langchain-openai
 ```
 
 ### 2. Initialize Vaquero
-```python
+```python title="SDK Initialization"
 import vaquero
 
 # Initialize with your API key
@@ -18,7 +18,7 @@ vaquero.init(api_key="cf_your-project-key-here")
 ```
 
 ### 3. Add Callback Handler
-```python
+```python title="Handler Setup"
 from vaquero.langchain import get_vaquero_handler
 
 # Get the callback handler
@@ -33,10 +33,10 @@ chain.invoke(
 
 That's it! Your LangChain operations are now automatically traced.
 
-## 📋 Integration Patterns
+## Integration Patterns
 
 ### LCEL Chain Tracing
-```python
+```python title="Text Processing Chain"
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -69,7 +69,7 @@ result = chain.invoke(
 ```
 
 ### Agent Tracing
-```python
+```python title="Research Agent"
 from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
 from vaquero.langchain import get_vaquero_handler
@@ -107,7 +107,7 @@ result = agent_executor.invoke(
 ```
 
 ### RAG Application Tracing
-```python
+```python title="RAG System"
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -151,10 +151,10 @@ result = rag_chain.invoke(
 # - Response parsing and formatting
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Custom Parent Context
-```python
+```python title="Structured Context"
 # Add structured context for better organization
 handler = get_vaquero_handler(parent_context={
     "team": "ml_engineering",
@@ -165,7 +165,7 @@ handler = get_vaquero_handler(parent_context={
 ```
 
 ### Multiple Callback Handlers
-```python
+```python title="Multiple Handlers"
 # Use multiple handlers for different purposes
 from vaquero.langchain import get_vaquero_handler
 
@@ -186,7 +186,7 @@ chain.invoke(
 ```
 
 ### Conditional Tracing
-```python
+```python title="Environment-Based Tracing"
 # Enable tracing only for certain conditions
 import os
 from vaquero.langchain import get_vaquero_handler
@@ -204,7 +204,7 @@ else:
     chain.invoke(input)  # No tracing overhead
 ```
 
-## 📊 What Gets Traced
+## What Gets Traced
 
 ### LLM Operations
 - **Model**: Which model was called (gpt-4, gpt-3.5-turbo, etc.)
