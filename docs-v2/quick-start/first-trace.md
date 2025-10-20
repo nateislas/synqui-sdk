@@ -248,7 +248,7 @@ print(f"Queue size: {stats.get('queue_size', 0)}")
 ```
 
 ### View in Dashboard
-1. Go to [https://app.vaquero.com](https://app.vaquero.com)
+1. Go to [https://www.vaquero.app](https://www.vaquero.app)
 2. Navigate to **Trace Explorer**
 3. Look for your `demo_function` trace
 4. Click to see details, timing, and metadata

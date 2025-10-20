@@ -5,7 +5,7 @@ Your traces are being collected! The Vaquero dashboard is where you'll analyze p
 ## 🌐 Accessing the Dashboard
 
 ### Step 1: Navigate to Vaquero
-1. Go to **[https://app.vaquero.com](https://app.vaquero.com)**
+1. Go to **[https://www.vaquero.app](https://www.vaquero.app)**
 2. **Sign in** with your account credentials
 3. **Select your project** from the project dropdown (if you have multiple)
 

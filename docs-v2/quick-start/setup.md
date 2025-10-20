@@ -25,7 +25,7 @@ pip install vaquero-sdk[all]  # Includes optional integrations
 
 ### Step 1: Get Your API Key
 
-1. **Sign up** at [https://app.vaquero.com](https://app.vaquero.com)
+1. **Sign up** at [https://www.vaquero.app](https://www.vaquero.app)
 2. **Create a project** (or join an existing one)
 3. **Copy your project-scoped API key** (starts with `cf_`)
 
@@ -174,7 +174,7 @@ print(f"Traces sent: {stats.get('traces_sent', 0)}")
 ```
 
 ### Check Dashboard
-1. Go to [https://app.vaquero.com](https://app.vaquero.com)
+1. Go to [https://www.vaquero.app](https://www.vaquero.app)
 2. Look for your test trace in the trace explorer
 3. Verify the trace details and metadata
 

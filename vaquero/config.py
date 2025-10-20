@@ -118,7 +118,7 @@ def configure_from_env() -> SDKConfig:
             return {}
 
     return SDKConfig(
-        api_key=os.getenv("VAQUERO_API_KEY", ""),
+        api_key=os.getenv("VAQUERO_PROJECT_API_KEY", ""),
         project_id=os.getenv("VAQUERO_PROJECT_ID", ""),
         endpoint=os.getenv("VAQUERO_ENDPOINT", "https://api.vaquero.com"),
         batch_size=int(os.getenv("VAQUERO_BATCH_SIZE", "100")),
@@ -287,7 +287,7 @@ MODE_PRESETS = {
 
 
 def init(
-    api_key: str,
+    project_api_key: str,
     project_id: Optional[str] = None,
     endpoint: Optional[str] = None,
     mode: str = "development",
@@ -299,7 +299,7 @@ def init(
     presets based on the specified mode and allows for targeted overrides.
 
     Args:
-        api_key: API key for authentication with Vaquero
+        project_api_key: Project API key for authentication with Vaquero
         project_id: Project ID to associate traces with (optional)
         endpoint: Vaquero API endpoint URL (optional)
         mode: Operating mode - "development" (default) or "production"
@@ -310,14 +310,14 @@ def init(
 
     Example:
         # Simple development setup
-        vaquero.init(api_key="your-key")
+        vaquero.init(project_api_key="your-key")
 
         # Production setup
-        vaquero.init(api_key="your-key", mode="production")
+        vaquero.init(project_api_key="your-key", mode="production")
 
         # Custom configuration
         vaquero.init(
-            api_key="your-key",
+            project_api_key="your-key",
             project_id="your-project",
             capture_inputs=True,
             batch_size=50
@@ -337,8 +337,8 @@ def init(
             setattr(config, key, value)
 
     # Override with provided parameters
-    if api_key is not None:
-        config.api_key = api_key
+    if project_api_key is not None:
+        config.api_key = project_api_key
     if project_id is not None:
         config.project_id = project_id
     if endpoint is not None:
