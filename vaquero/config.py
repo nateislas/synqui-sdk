@@ -117,9 +117,22 @@ def configure_from_env() -> SDKConfig:
         except (json.JSONDecodeError, TypeError):
             return {}
 
+    # Handle project identification from environment
+    project_id = os.getenv("VAQUERO_PROJECT_ID", "")
+    project_name = os.getenv("VAQUERO_PROJECT_NAME", "")
+    
+    # If project_name is provided, resolve it to project_id
+    if project_name and not project_id:
+        endpoint = os.getenv("VAQUERO_ENDPOINT", "https://api.vaquero.com")
+        api_key = os.getenv("VAQUERO_PROJECT_API_KEY", "")
+        if api_key:
+            resolved_id = _resolve_project_by_name(endpoint, api_key, project_name)
+            if resolved_id:
+                project_id = resolved_id
+
     return SDKConfig(
         api_key=os.getenv("VAQUERO_PROJECT_API_KEY", ""),
-        project_id=os.getenv("VAQUERO_PROJECT_ID", ""),
+        project_id=project_id,
         endpoint=os.getenv("VAQUERO_ENDPOINT", "https://api.vaquero.com"),
         batch_size=int(os.getenv("VAQUERO_BATCH_SIZE", "100")),
         flush_interval=float(os.getenv("VAQUERO_FLUSH_INTERVAL", "5.0")),
@@ -289,6 +302,7 @@ MODE_PRESETS = {
 def init(
     project_api_key: str,
     project_id: Optional[str] = None,
+    project_name: Optional[str] = None,
     endpoint: Optional[str] = None,
     mode: str = "development",
     **overrides
@@ -301,6 +315,7 @@ def init(
     Args:
         project_api_key: Project API key for authentication with Vaquero
         project_id: Project ID to associate traces with (optional)
+        project_name: Project name to associate traces with (optional, takes precedence over project_id)
         endpoint: Vaquero API endpoint URL (optional)
         mode: Operating mode - "development" (default) or "production"
         **overrides: Additional configuration overrides
@@ -312,13 +327,16 @@ def init(
         # Simple development setup
         vaquero.init(project_api_key="your-key")
 
+        # Using project name (recommended)
+        vaquero.init(project_api_key="your-key", project_name="my-awesome-project")
+
         # Production setup
         vaquero.init(project_api_key="your-key", mode="production")
 
         # Custom configuration
         vaquero.init(
             project_api_key="your-key",
-            project_id="your-project",
+            project_name="my-project",
             capture_inputs=True,
             batch_size=50
         )
@@ -339,12 +357,21 @@ def init(
     # Override with provided parameters
     if project_api_key is not None:
         config.api_key = project_api_key
-    if project_id is not None:
-        config.project_id = project_id
     if endpoint is not None:
         config.endpoint = endpoint
     # Set mode after applying preset to ensure it takes precedence
     config.mode = mode
+    
+    # Handle project identification (project_name takes precedence over project_id)
+    if project_name is not None:
+        # Resolve project name to project ID
+        resolved_project_id = _resolve_project_by_name(config.endpoint, config.api_key, project_name)
+        if resolved_project_id:
+            config.project_id = resolved_project_id
+        else:
+            raise ValueError(f"Project '{project_name}' not found. Please check the project name or create the project first.")
+    elif project_id is not None:
+        config.project_id = project_id
 
     # Apply additional overrides
     for key, value in overrides.items():
@@ -402,3 +429,48 @@ def _resolve_or_create_project(endpoint: str, api_key: str) -> Optional[str]:
             return data.get("id")
     except (URLError, HTTPError):
         return None
+
+
+def _resolve_project_by_name(endpoint: str, api_key: str, project_name: str) -> Optional[str]:
+    """Resolve project name to project ID by querying the API.
+
+    Uses stdlib urllib to avoid adding dependencies.
+    Returns project_id or None if not found.
+    """
+    import json
+
+    base = endpoint.rstrip("/")
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    try:
+        # First get user info to get user_id
+        whoami_req = _urlreq.Request(f"{base}/api/v1/auth/whoami", headers=headers, method="GET")
+        with _urlreq.urlopen(whoami_req, timeout=10) as resp:
+            whoami_data = json.loads(resp.read().decode("utf-8"))
+            user_id = whoami_data.get("user_id")
+            
+        if not user_id:
+            return None
+            
+        # Add user ID to headers
+        headers["X-User-ID"] = user_id
+        
+        # Get all projects for the user
+        req = _urlreq.Request(f"{base}/api/v1/projects/", headers=headers, method="GET")
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            
+            # Look for project with matching name
+            if isinstance(data, list):
+                for project in data:
+                    if project.get("name") == project_name:
+                        return project.get("id")
+            elif isinstance(data, dict) and "projects" in data:
+                for project in data["projects"]:
+                    if project.get("name") == project_name:
+                        return project.get("id")
+                        
+    except (URLError, HTTPError, json.JSONDecodeError):
+        pass
+    
+    return None
