@@ -41,6 +41,7 @@ from .config import SDKConfig, configure, configure_from_env, init
 from .context import get_current_span
 from .decorators import trace as _trace_decorator
 from .workflow import workflow, Workflow
+from .chat_session import ChatSession, ChatSessionManager, create_chat_session, get_session_manager
 
 # Optional integrations (only import if dependencies are available)
 try:
@@ -114,6 +115,50 @@ def shutdown():
         _default_sdk.shutdown()
 
 
+def start_chat_session(
+    name: Optional[str] = None,
+    session_type: str = "chat",
+    timeout_minutes: int = 30,
+    max_duration_minutes: int = 240,
+    metadata: Optional[dict] = None
+) -> ChatSession:
+    """Start a new chat session.
+
+    Args:
+        name: Human-readable name for the session
+        session_type: Type of session ('chat', 'pipeline', 'workflow')
+        timeout_minutes: Minutes of inactivity before session timeout
+        max_duration_minutes: Maximum session duration in minutes
+        metadata: Additional session metadata
+
+    Returns:
+        The created ChatSession instance
+
+    Example:
+        import vaquero
+
+        # Initialize SDK first
+        vaquero.init(api_key="your-api-key")
+
+        # Create a chat session for conversational AI
+        session = vaquero.start_chat_session(
+            name="pdf_chat_assistant",
+            session_type="chat",
+            timeout_minutes=30
+        )
+
+        # Use the session with LangGraph handler
+        handler = vaquero.get_vaquero_langgraph_handler_with_session(session)
+    """
+    return create_chat_session(
+        name=name,
+        session_type=session_type,
+        timeout_minutes=timeout_minutes,
+        max_duration_minutes=max_duration_minutes,
+        metadata=metadata
+    )
+
+
 # Build __all__ list dynamically to include optional integrations
 __all__ = [
     "init",
@@ -129,6 +174,12 @@ __all__ = [
     "SDKConfig",
     "VaqueroSDK",
     "Workflow",
+    "ChatSession",
+    "ChatSessionManager",
+    "create_chat_session",
+    "start_chat_session",
+    "get_session_manager",
+    "get_vaquero_langgraph_handler_with_session",
     "__version__",
 ]
 
@@ -139,6 +190,32 @@ if _LANGCHAIN_AVAILABLE:
 # Add LangGraph integration if available
 if _LANGGRAPH_AVAILABLE:
     __all__.extend(["VaqueroLangGraphHandler", "get_vaquero_langgraph_handler", "create_langgraph_config"])
+
+
+# Add session-aware handler function
+def get_vaquero_langgraph_handler_with_session(session: ChatSession):
+    """Get a VaqueroLangGraphHandler configured for a specific chat session.
+
+    Args:
+        session: The ChatSession instance to associate with the handler
+
+    Returns:
+        VaqueroLangGraphHandler configured for the session
+
+    Example:
+        import vaquero
+
+        # Create session
+        session = vaquero.start_chat_session("my_chat")
+
+        # Get session-aware handler
+        handler = vaquero.get_vaquero_langgraph_handler_with_session(session)
+    """
+    if not _LANGGRAPH_AVAILABLE:
+        raise ImportError("LangGraph integration not available. Install langgraph to use this feature.")
+
+    from .langgraph import VaqueroLangGraphHandler
+    return VaqueroLangGraphHandler(session=session)
 
 # Register automatic shutdown for the global SDK instance
 import atexit

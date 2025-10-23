@@ -18,6 +18,7 @@ from .trace_collector_unified import UnifiedTraceCollector
 from .token_counter import count_function_tokens, extract_tokens_from_llm_response
 from .auto_instrumentation import AutoInstrumentationEngine
 from .analytics import initialize_analytics, get_analytics
+from .chat_session import ChatSession, create_chat_session
 
 logger = logging.getLogger(__name__)
 
@@ -792,6 +793,48 @@ class VaqueroSDK:
             Number of events in the queue
         """
         return self._event_queue.qsize()
+
+    def start_chat_session(
+        self,
+        name: Optional[str] = None,
+        session_type: str = "chat",
+        timeout_minutes: int = 30,
+        max_duration_minutes: int = 240,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> ChatSession:
+        """Start a new chat session for conversational AI applications.
+
+        Args:
+            name: Human-readable name for the session
+            session_type: Type of session ('chat', 'pipeline', 'workflow')
+            timeout_minutes: Minutes of inactivity before session timeout
+            max_duration_minutes: Maximum session duration in minutes
+            metadata: Additional session metadata
+
+        Returns:
+            The created ChatSession instance
+
+        Example:
+            # Initialize SDK first
+            sdk = VaqueroSDK(config)
+
+            # Create a chat session for conversational AI
+            session = sdk.start_chat_session(
+                name="pdf_chat_assistant",
+                session_type="chat",
+                timeout_minutes=30
+            )
+
+            # Use the session with LangGraph handler
+            handler = VaqueroLangGraphHandler(session=session)
+        """
+        return create_chat_session(
+            name=name,
+            session_type=session_type,
+            timeout_minutes=timeout_minutes,
+            max_duration_minutes=max_duration_minutes,
+            metadata=metadata
+        )
 
 
 # Global SDK instance

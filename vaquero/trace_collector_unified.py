@@ -6,6 +6,7 @@ import json
 from typing import Dict, Any, Optional, TYPE_CHECKING
 from datetime import datetime
 from .processors import LangChainProcessor
+from .processors.langgraph_processor import LangGraphProcessor
 
 if TYPE_CHECKING:
     from .sdk import VaqueroSDK
@@ -32,10 +33,12 @@ class UnifiedTraceCollector:
         self.config = sdk.config
         self.processors = {
             'langchain': LangChainProcessor(),
+            'langgraph': LangGraphProcessor(),
             # Add other processors as needed
         }
         self.trace_processors = {}  # trace_id -> processor
         self._traces = {}  # For compatibility with shutdown method
+        self._cached_user_id = None  # Cache user ID to avoid repeated whoami calls
     
     def process_span(self, span_data: Dict[str, Any]) -> None:
         """Process span with appropriate framework processor."""
@@ -60,7 +63,7 @@ class UnifiedTraceCollector:
             if processor.detect_framework(span_data):
                 return framework
         
-        # Default to langchain for now
+        # Default to langchain for backward compatibility
         return 'langchain'
     
     def finalize_trace(self, trace_id: str) -> None:
@@ -184,6 +187,25 @@ class UnifiedTraceCollector:
                     return dt.isoformat() + "Z" if not dt.isoformat().endswith('Z') else dt.isoformat()
                 return current_time.isoformat() + "Z"
             
+            # Extract session metadata from first agent that has it
+            session_metadata = None
+            for agent in hierarchical_trace.agents:
+                if agent.get('session_metadata'):
+                    session_metadata = agent['session_metadata']
+                    break
+
+            # Extract session fields
+            session_type = None
+            session_timeout_minutes = None
+            message_count = 0
+            if session_metadata:
+                session_type = session_metadata.get('session_type')
+                session_timeout_minutes = session_metadata.get('timeout_minutes')
+                message_count = session_metadata.get('message_count', 0)
+
+            # Extract chat_session_id from metadata
+            chat_session_id = hierarchical_trace.metadata.get('chat_session_id') if hierarchical_trace.metadata else None
+            
             trace_data = {
                 "trace_id": hierarchical_trace.trace_id,
                 "name": hierarchical_trace.name,
@@ -192,6 +214,12 @@ class UnifiedTraceCollector:
                 "end_time": format_datetime(trace_end_time),
                 "duration_ms": trace_duration_ms,
                 "session_id": trace_session_id,
+                "session_type": session_type,
+                "session_start_time": session_metadata.get('start_time') if session_metadata else None,
+                "session_end_time": session_metadata.get('end_time') if session_metadata else None,
+                "session_timeout_minutes": session_timeout_minutes,
+                "message_count": message_count,
+                "chat_session_id": chat_session_id,
                 "environment": trace_environment,
                 "tags": {},
                 "metadata": hierarchical_trace.metadata or {}
@@ -224,6 +252,38 @@ class UnifiedTraceCollector:
                     except (ValueError, AttributeError):
                         agent_end_time = None
                 
+                # Extract session fields from agent metadata
+                agent_session_id = None
+                message_type = None
+                message_content = None
+                message_sequence = None
+                user_message_id = None
+                agent_orchestration_id = None
+
+                # Check agent metadata for session fields
+                agent_metadata = agent.get('metadata', {}) or agent.get('tags', {})
+                if isinstance(agent_metadata, dict):
+                    agent_session_id = agent_metadata.get('session_id') or agent_metadata.get('chat_session_id')
+                    message_type = agent_metadata.get('message_type')
+                    message_content = agent_metadata.get('message_content')
+                    message_sequence = agent_metadata.get('message_sequence')
+                    user_message_id = agent_metadata.get('user_message_id')
+                    agent_orchestration_id = agent_metadata.get('agent_orchestration_id')
+
+                # Also check direct agent fields
+                if not agent_session_id:
+                    agent_session_id = agent.get('session_id') or agent.get('chat_session_id')
+                if not message_type:
+                    message_type = agent.get('message_type')
+                if not message_content:
+                    message_content = agent.get('message_content')
+                if not message_sequence:
+                    message_sequence = agent.get('message_sequence')
+                if not user_message_id:
+                    user_message_id = agent.get('user_message_id')
+                if not agent_orchestration_id:
+                    agent_orchestration_id = agent.get('agent_orchestration_id')
+
                 agent_data = {
                     "trace_id": hierarchical_trace.trace_id,
                     "agent_id": agent.get('agent_id', str(uuid.uuid4())),
@@ -251,7 +311,14 @@ class UnifiedTraceCollector:
                     "level": agent.get('level', 1),
                     "framework": agent.get('framework'),
                     "component_type": agent.get('component_type'),
-                    "framework_metadata": agent.get('framework_metadata', {})
+                    "framework_metadata": agent.get('framework_metadata', {}),
+                    # Chat session fields
+                    "message_type": message_type,
+                    "message_content": message_content,
+                    "message_sequence": message_sequence,
+                    "user_message_id": user_message_id,
+                    "agent_orchestration_id": agent_orchestration_id,
+                    "chat_session_id": agent_session_id
                 }
                 agents_data.append(agent_data)
             
@@ -307,12 +374,19 @@ class UnifiedTraceCollector:
             # Make batch_data JSON-serializable (convert UUIDs, datetimes, etc.)
             serializable_data = json_serializable(batch_data)
             
+            # Get user ID from whoami endpoint
+            user_id = self._get_user_id()
+            
             # Send to the batch traces API endpoint
             url = f"{self.sdk.config.endpoint}/api/v1/traces/batch"
             headers = {
                 "Authorization": f"Bearer {self.sdk.config.api_key}",
                 "Content-Type": "application/json"
             }
+            
+            # Add user ID header if available
+            if user_id:
+                headers["X-User-ID"] = user_id
             
             response = requests.post(url, json=serializable_data, headers=headers, timeout=30)
             
@@ -323,6 +397,38 @@ class UnifiedTraceCollector:
                 
         except Exception as e:
             logger.error(f"Failed to send batch to API: {e}")
+    
+    def _get_user_id(self) -> Optional[str]:
+        """Get user ID from whoami endpoint (cached)."""
+        # Return cached user ID if available
+        if self._cached_user_id is not None:
+            return self._cached_user_id
+            
+        try:
+            import requests
+            
+            # Call whoami endpoint to get user ID
+            whoami_url = f"{self.sdk.config.endpoint}/api/v1/auth/whoami"
+            whoami_headers = {
+                "Authorization": f"Bearer {self.sdk.config.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.get(whoami_url, headers=whoami_headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                user_id = data.get("user_id")
+                # Cache the user ID
+                self._cached_user_id = user_id
+                return user_id
+            else:
+                logger.warning(f"Failed to get user ID from whoami: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.warning(f"Failed to get user ID: {e}")
+            return None
     
     def shutdown(self):
         """Shutdown the unified trace collector."""

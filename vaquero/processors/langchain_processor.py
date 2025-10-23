@@ -214,6 +214,7 @@ class LangChainProcessor(FrameworkProcessor):
         return False
 
 
+
     def _determine_parent_from_context(self, span_data: Dict[str, Any]) -> str:
         """Determine parent logical agent from execution context."""
         # Prefer explicit parent linkage when available
