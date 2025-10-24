@@ -39,6 +39,7 @@ class UnifiedTraceCollector:
         self.trace_processors = {}  # trace_id -> processor
         self._traces = {}  # For compatibility with shutdown method
         self._cached_user_id = None  # Cache user ID to avoid repeated whoami calls
+        self._cached_project_id = None  # Cache project ID to avoid repeated whoami calls
     
     def process_span(self, span_data: Dict[str, Any]) -> None:
         """Process span with appropriate framework processor."""
@@ -374,8 +375,16 @@ class UnifiedTraceCollector:
             # Make batch_data JSON-serializable (convert UUIDs, datetimes, etc.)
             serializable_data = json_serializable(batch_data)
             
-            # Get user ID from whoami endpoint
+            # Get user ID and project ID from whoami endpoint
             user_id = self._get_user_id()
+            project_id = self._cached_project_id
+            
+            # Log the project routing information
+            logger.info(f"🔍 SDK: Sending batch to API with project_id: {project_id}")
+            logger.info(f"🔍 SDK: Batch contains {len(serializable_data.get('traces', []))} traces")
+            if serializable_data.get('traces'):
+                for i, trace in enumerate(serializable_data.get('traces', [])):
+                    logger.info(f"🔍 SDK: Trace {i}: {trace.get('name', 'unnamed')} (ID: {trace.get('trace_id', 'unknown')})")
             
             # Send to the batch traces API endpoint
             url = f"{self.sdk.config.endpoint}/api/v1/traces/batch"
@@ -384,22 +393,31 @@ class UnifiedTraceCollector:
                 "Content-Type": "application/json"
             }
             
-            # Add user ID header if available
+            # Add user ID and project ID headers if available
             if user_id:
                 headers["X-User-ID"] = user_id
+                logger.info(f"🔍 SDK: Added X-User-ID header: {user_id}")
+            
+            if project_id:
+                headers["X-Project-ID"] = project_id
+                logger.info(f"🔍 SDK: Added X-Project-ID header: {project_id}")
+            else:
+                logger.warning(f"🔍 SDK: No project_id available - traces may be sent to wrong project!")
+            
+            logger.info(f"🔍 SDK: Sending request to {url} with headers: {list(headers.keys())}")
             
             response = requests.post(url, json=serializable_data, headers=headers, timeout=30)
             
             if response.status_code not in [200, 201, 202]:
                 logger.warning(f"Failed to send batch to API: {response.status_code} - {response.text}")
             else:
-                logger.debug(f"Successfully sent batch to API")
+                logger.info(f"🔍 SDK: Successfully sent batch to API (status: {response.status_code})")
                 
         except Exception as e:
             logger.error(f"Failed to send batch to API: {e}")
     
     def _get_user_id(self) -> Optional[str]:
-        """Get user ID from whoami endpoint (cached)."""
+        """Get user ID and project ID from whoami endpoint (cached)."""
         # Return cached user ID if available
         if self._cached_user_id is not None:
             return self._cached_user_id
@@ -407,20 +425,31 @@ class UnifiedTraceCollector:
         try:
             import requests
             
-            # Call whoami endpoint to get user ID
+            # Call whoami endpoint to get user ID and project ID
             whoami_url = f"{self.sdk.config.endpoint}/api/v1/auth/whoami"
             whoami_headers = {
                 "Authorization": f"Bearer {self.sdk.config.api_key}",
                 "Content-Type": "application/json"
             }
             
+            logger.info(f"🔍 SDK: Calling whoami endpoint: {whoami_url}")
             response = requests.get(whoami_url, headers=whoami_headers, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
                 user_id = data.get("user_id")
-                # Cache the user ID
+                # Use configured project_id instead of whoami project_id
+                project_id = self.sdk.config.project_id
+                
+                # Log the whoami response for debugging
+                logger.info(f"🔍 SDK: Whoami response - user_id: {user_id}, whoami_project_id: {data.get('project_id')}")
+                logger.info(f"🔍 SDK: Using configured project_id: {project_id}")
+                logger.info(f"🔍 SDK: Full whoami response: {data}")
+                
+                # Cache both user_id and project_id
                 self._cached_user_id = user_id
+                self._cached_project_id = project_id
+                
                 return user_id
             else:
                 logger.warning(f"Failed to get user ID from whoami: {response.status_code}")
