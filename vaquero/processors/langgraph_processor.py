@@ -20,7 +20,8 @@ class LangGraphProcessor(FrameworkProcessor):
         self.spans.append(span_data)
         
         agent_name = span_data.get('agent_name', '')
-        logger.info(f"📥 Processing LangGraph span: {agent_name}")
+        component_type = span_data.get('component_type', 'agent')
+        logger.info(f"📥 Processing LangGraph span: {agent_name} (type: {component_type})")
         
         # Extract session information
         session_id = span_data.get('session_id')
@@ -39,13 +40,21 @@ class LangGraphProcessor(FrameworkProcessor):
                 'status': span_data.get('status', 'completed')
             }
         
+        # Determine the level based on component type
+        if component_type == 'agent':
+            level = 2  # Individual agents are level 2
+        elif component_type in ['llm', 'tool', 'chain', 'prompt']:
+            level = 3  # Internal components are level 3
+        else:
+            level = 2  # Default to level 2
+        
         # Add agent to orchestration
         if agent_orchestration_id:
             agent_data = {
                 'name': agent_name,
-                'level': 2,  # Agents are level 2 in LangGraph
+                'level': level,
                 'framework': 'langgraph',
-                'component_type': 'agent',
+                'component_type': component_type,
                 'parent_agent_id': None,
                 'spans': [span_data],
                 'session_id': session_id,
@@ -56,21 +65,21 @@ class LangGraphProcessor(FrameworkProcessor):
             }
             
             self.agent_orchestrations[agent_orchestration_id]['agents'].append(agent_data)
-            logger.debug(f"Added LangGraph agent {agent_name} to orchestration {agent_orchestration_id}")
+            logger.debug(f"Added LangGraph {component_type} {agent_name} to orchestration {agent_orchestration_id}")
         else:
-            # Standalone agent
+            # Standalone agent/component
             if agent_name not in self.agents:
                 self.agents[agent_name] = {
                     'name': agent_name,
-                    'level': 1,
+                    'level': level,
                     'framework': 'langgraph',
-                    'component_type': 'agent',
+                    'component_type': component_type,
                     'parent_agent_id': None,
                     'spans': []
                 }
             
             self.agents[agent_name]['spans'].append(span_data)
-            logger.debug(f"Added standalone LangGraph agent {agent_name}")
+            logger.debug(f"Added standalone LangGraph {component_type} {agent_name}")
     
     def process_trace(self, trace_id: str) -> HierarchicalTrace:
         """Process all spans into hierarchical format."""
@@ -94,7 +103,7 @@ class LangGraphProcessor(FrameworkProcessor):
         else:
             logger.info(f"Processing standalone trace {trace_id}")
         
-        # If we have a session, create a session-level trace instead of individual traces
+        # If we have a session, create a proper hierarchical structure
         if chat_session_id:
             # Create session orchestration agent (level 1)
             session_orchestration = {
@@ -111,34 +120,82 @@ class LangGraphProcessor(FrameworkProcessor):
                 'agents': []
             }
             
-            # Add all agents as sub-agents of the session orchestration
+            # Group agents by orchestration and level
+            agent_groups = {}
             for agent_name, agent_data in self.agents.items():
-                # Extract model information from spans
-                model_info = self._extract_model_info(agent_data['spans'])
+                orchestration_id = agent_data.get('agent_orchestration_id', 'default')
+                if orchestration_id not in agent_groups:
+                    agent_groups[orchestration_id] = {'agents': [], 'components': []}
                 
-                # Calculate metrics
-                total_tokens = sum(span.get('input_tokens', 0) + span.get('output_tokens', 0) for span in agent_data['spans'])
-                total_cost = sum(span.get('cost', 0) for span in agent_data['spans'])
-                
-                agent_entry = {
-                    'name': agent_name,
-                    'level': 2,  # Sub-agent of session orchestration
+                if agent_data.get('level', 2) == 2:  # Agent level
+                    agent_groups[orchestration_id]['agents'].append(agent_data)
+                else:  # Component level
+                    agent_groups[orchestration_id]['components'].append(agent_data)
+            
+            # Process each orchestration group
+            for orchestration_id, group in agent_groups.items():
+                # Create agent orchestration entry (level 2)
+                orchestration_entry = {
+                    'name': f"agent_orchestration_{orchestration_id[:8]}" if orchestration_id != 'default' else 'agent_orchestration',
+                    'level': 2,
                     'framework': 'langgraph',
-                    'component_type': 'agent',
+                    'component_type': 'agent_orchestration',
                     'parent_agent_id': session_orchestration['name'],
                     'session_id': trace_session_id,
                     'chat_session_id': chat_session_id,
-                    'start_time': self._get_earliest_start_time(agent_data['spans']),
-                    'end_time': self._get_latest_end_time(agent_data['spans']),
-                    'duration': self._calculate_duration(agent_data['spans']),
+                    'start_time': self._get_earliest_start_time([span for agent in group['agents'] for span in agent['spans']]),
+                    'end_time': self._get_latest_end_time([span for agent in group['agents'] for span in agent['spans']]),
                     'status': 'completed',
-                    'total_tokens': total_tokens,
-                    'total_cost': total_cost,
-                    'model_info': model_info,
                     'agents': []
                 }
-                session_orchestration['agents'].append(agent_entry)
-                agents.append(agent_entry)
+                
+                # Add individual agents (level 3)
+                for agent_data in group['agents']:
+                    model_info = self._extract_model_info(agent_data['spans'])
+                    total_tokens = sum(span.get('input_tokens', 0) + span.get('output_tokens', 0) for span in agent_data['spans'])
+                    total_cost = sum(span.get('cost', 0) for span in agent_data['spans'])
+                    
+                    agent_entry = {
+                        'name': agent_data['name'],
+                        'level': 3,  # Individual agents are level 3
+                        'framework': 'langgraph',
+                        'component_type': 'agent',
+                        'parent_agent_id': orchestration_entry['name'],
+                        'session_id': trace_session_id,
+                        'chat_session_id': chat_session_id,
+                        'start_time': self._get_earliest_start_time(agent_data['spans']),
+                        'end_time': self._get_latest_end_time(agent_data['spans']),
+                        'duration': self._calculate_duration(agent_data['spans']),
+                        'status': 'completed',
+                        'total_tokens': total_tokens,
+                        'total_cost': total_cost,
+                        'model_info': model_info,
+                        'agents': []
+                    }
+                    
+                    # Add components (level 4) as sub-agents
+                    for component_data in group['components']:
+                        if component_data.get('parent_agent_id') == agent_data['name']:
+                            component_entry = {
+                                'name': component_data['name'],
+                                'level': 4,  # Components are level 4
+                                'framework': 'langgraph',
+                                'component_type': component_data.get('component_type', 'component'),
+                                'parent_agent_id': agent_entry['name'],
+                                'session_id': trace_session_id,
+                                'chat_session_id': chat_session_id,
+                                'start_time': self._get_earliest_start_time(component_data['spans']),
+                                'end_time': self._get_latest_end_time(component_data['spans']),
+                                'duration': self._calculate_duration(component_data['spans']),
+                                'status': 'completed',
+                                'agents': []
+                            }
+                            agent_entry['agents'].append(component_entry)
+                    
+                    orchestration_entry['agents'].append(agent_entry)
+                
+                session_orchestration['agents'].append(orchestration_entry)
+                agents.append(orchestration_entry)
             
             # Add the session orchestration as the main agent
             agents.insert(0, session_orchestration)
