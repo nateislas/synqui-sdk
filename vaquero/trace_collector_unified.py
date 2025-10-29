@@ -47,18 +47,28 @@ class UnifiedTraceCollector:
         if not trace_id:
             logger.warning("Span has no trace_id, skipping")
             return
-        
-        logger.debug(f"Processing span with trace_id: {trace_id}, agent_name: {span_data.get('agent_name', 'unknown')}, component_type: {span_data.get('component_type', 'unknown')}")
-        
+
+        # 🔍 DEBUG LOGGING: Show all spans being processed
+        agent_name = span_data.get('agent_name', 'unknown')
+        component_type = span_data.get('component_type', 'unknown')
+        session_id = span_data.get('session_id', 'none')
+        orchestration_id = span_data.get('agent_orchestration_id', 'none')
+
+        logger.info(f"🔍 TRACE COLLECTOR: Processing span - trace_id: {trace_id}, agent: {agent_name}, type: {component_type}")
+        logger.info(f"🔍 TRACE COLLECTOR: Session: {session_id}, orchestration: {orchestration_id}")
+        logger.debug(f"Processing span with trace_id: {trace_id}, agent_name: {agent_name}, component_type: {component_type}")
+
         # Get or create processor for this trace
         if trace_id not in self.trace_processors:
             framework = self._detect_framework(span_data)
             self.trace_processors[trace_id] = self.processors[framework]
+            logger.info(f"🔍 TRACE COLLECTOR: Created {framework} processor for trace {trace_id}")
             logger.debug(f"Created {framework} processor for trace {trace_id}")
-        
+
         # Add span to appropriate processor
         processor = self.trace_processors[trace_id]
         processor.add_span(span_data)
+        logger.info(f"🔍 TRACE COLLECTOR: Added span to {type(processor).__name__} for trace {trace_id}")
         logger.debug(f"Added span to processor for trace {trace_id}")
     
     def _detect_framework(self, span_data: Dict[str, Any]) -> str:
@@ -77,30 +87,50 @@ class UnifiedTraceCollector:
     def finalize_trace(self, trace_id: str) -> None:
         """Finalize trace and send to database."""
         print(f"🔍 TRACE COLLECTOR: Finalizing trace {trace_id}")
-        
+        logger.info(f"🔍 TRACE COLLECTOR: Starting trace finalization for {trace_id}")
+
         if trace_id not in self.trace_processors:
             print(f"🔍 TRACE COLLECTOR: No processor found for trace {trace_id}")
             logger.warning(f"No processor found for trace {trace_id}")
             return
-        
+
         try:
             processor = self.trace_processors[trace_id]
-            print(f"🔍 TRACE COLLECTOR: Processing trace with {type(processor).__name__}")
+            processor_name = type(processor).__name__
+            print(f"🔍 TRACE COLLECTOR: Processing trace with {processor_name}")
+            logger.info(f"🔍 TRACE COLLECTOR: Using {processor_name} processor for trace {trace_id}")
+
             hierarchical_trace = processor.process_trace(trace_id)
-            
+
+            # 🔍 DEBUG LOGGING: Show hierarchical trace details
+            agent_count = len(hierarchical_trace.agents)
+            print(f"🔍 TRACE COLLECTOR: Hierarchical trace created with {agent_count} agents")
+            logger.info(f"🔍 TRACE COLLECTOR: Hierarchical trace has {agent_count} agents")
+
+            for i, agent in enumerate(hierarchical_trace.agents):
+                agent_name = agent.get('name', 'unknown')
+                agent_level = agent.get('level', 'unknown')
+                agent_type = agent.get('component_type', 'unknown')
+                sub_agents = agent.get('agents', [])
+                print(f"🔍 TRACE COLLECTOR: Agent {i}: {agent_name} (level {agent_level}, type {agent_type})")
+                if sub_agents:
+                    print(f"🔍 TRACE COLLECTOR:   Has {len(sub_agents)} sub-agents: {[a.get('name') for a in sub_agents]}")
+                logger.info(f"🔍 TRACE COLLECTOR: Agent {i}: {agent_name} (level {agent_level}, type {agent_type})")
+
             print(f"🔍 TRACE COLLECTOR: Sending hierarchical trace to database")
+            logger.info(f"🔍 TRACE COLLECTOR: Sending trace {trace_id} to database")
+
             # Send to database
             self._send_to_database(hierarchical_trace)
-            
+
             # Count agents vs components for better logging
-            agent_count = sum(1 for agent in hierarchical_trace.agents if agent.get('level') == 1)
-            component_count = sum(1 for agent in hierarchical_trace.agents if agent.get('level') == 2)
-            total_count = len(hierarchical_trace.agents)
-            
-            if agent_count > 0 and component_count > 0:
-                logger.info(f"Finalized trace {trace_id} with {total_count} entities ({agent_count} agents, {component_count} components)")
-            else:
-                logger.info(f"Finalized trace {trace_id} with {total_count} entities")
+            level_1_count = sum(1 for agent in hierarchical_trace.agents if agent.get('level') == 1)
+            level_2_count = sum(1 for agent in hierarchical_trace.agents if agent.get('level') == 2)
+            level_3_count = sum(1 for agent in hierarchical_trace.agents if agent.get('level') == 3)
+            print(f"🔍 TRACE COLLECTOR: Final breakdown - Level 1: {level_1_count}, Level 2: {level_2_count}, Level 3: {level_3_count}")
+            logger.info(f"🔍 TRACE COLLECTOR: Final breakdown - Level 1: {level_1_count}, Level 2: {level_2_count}, Level 3: {level_3_count}")
+
+            logger.info(f"Finalized trace {trace_id} with {len(hierarchical_trace.agents)} entities")
             
         except Exception as e:
             logger.error(f"Failed to finalize trace {trace_id}: {e}")

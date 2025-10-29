@@ -18,12 +18,16 @@ class LangGraphProcessor(FrameworkProcessor):
     def add_span(self, span_data: Dict[str, Any]) -> None:
         """Add LangGraph span to processor."""
         self.spans.append(span_data)
-        
+
         agent_name = span_data.get('agent_name', '')
         component_type = span_data.get('component_type', 'agent')
-        
-        # Enhanced logging for debugging
-        logger.info(f"📥 Processing LangGraph span: {agent_name} (type: {component_type})")
+
+        # 🔍 Enhanced logging for debugging
+        agent_orchestration_id = span_data.get('agent_orchestration_id')
+        session_id = span_data.get('session_id', 'none')
+        logger.info(f"📥 LANGGRAPH PROCESSOR: Adding span - agent: {agent_name}, type: {component_type}, orchestration: {agent_orchestration_id or 'none'}")
+        logger.info(f"📥 LANGGRAPH PROCESSOR: Session: {session_id}, total spans now: {len(self.spans)}")
+
         logger.debug(f"🔍 Span data keys: {list(span_data.keys())}")
         logger.debug(f"🔍 Span duration: {span_data.get('duration', 'N/A')}")
         logger.debug(f"🔍 Span tokens - input: {span_data.get('input_tokens', 0)}, output: {span_data.get('output_tokens', 0)}")
@@ -31,14 +35,12 @@ class LangGraphProcessor(FrameworkProcessor):
         logger.debug(f"🔍 Span status: {span_data.get('status', 'unknown')}")
         logger.debug(f"🔍 Span start_time: {span_data.get('start_time', 'N/A')}")
         logger.debug(f"🔍 Span end_time: {span_data.get('end_time', 'N/A')}")
-        
+
         # Extract session information
-        session_id = span_data.get('session_id')
         chat_session_id = span_data.get('chat_session_id')
-        agent_orchestration_id = span_data.get('agent_orchestration_id')
-        
+
         logger.debug(f"🔍 Session info - session_id: {session_id}, chat_session_id: {chat_session_id}, orchestration_id: {agent_orchestration_id}")
-        
+
         # Create or update agent orchestration
         if agent_orchestration_id and agent_orchestration_id not in self.agent_orchestrations:
             self.agent_orchestrations[agent_orchestration_id] = {
@@ -96,7 +98,23 @@ class LangGraphProcessor(FrameworkProcessor):
         """Process all spans into hierarchical format."""
         agents = []
         dependencies = []
-        
+
+        # 🔍 DEBUG LOGGING: Show what data we have
+        logger.info(f"🔍 PROCESSOR DEBUG: Processing trace {trace_id}")
+        logger.info(f"🔍 PROCESSOR DEBUG: Total spans: {len(self.spans)}")
+        logger.info(f"🔍 PROCESSOR DEBUG: Standalone agents: {list(self.agents.keys())}")
+        logger.info(f"🔍 PROCESSOR DEBUG: Agent orchestrations: {list(self.agent_orchestrations.keys())}")
+
+        # Show details of orchestrations
+        for orch_id, orch_data in self.agent_orchestrations.items():
+            logger.info(f"🔍 PROCESSOR DEBUG: Orchestration {orch_id} has {len(orch_data.get('agents', []))} agents")
+            for agent in orch_data.get('agents', []):
+                logger.info(f"🔍 PROCESSOR DEBUG:   Agent: {agent.get('name')} with {len(agent.get('spans', []))} spans")
+
+        # Show details of standalone agents
+        for agent_name, agent_data in self.agents.items():
+            logger.info(f"🔍 PROCESSOR DEBUG: Standalone agent {agent_name} has {len(agent_data.get('spans', []))} spans")
+
         # Extract session information from spans
         trace_session_id = None
         chat_session_id = None
@@ -106,7 +124,7 @@ class LangGraphProcessor(FrameworkProcessor):
             if span.get('chat_session_id'):
                 chat_session_id = span['chat_session_id']
                 break
-        
+
         # For session-aware traces, we need to use the original trace_id
         # but ensure all agents are grouped under the session
         if chat_session_id:
@@ -133,15 +151,23 @@ class LangGraphProcessor(FrameworkProcessor):
             
             # Group agents by orchestration and level
             agent_groups = {}
+            logger.info(f"🔍 PROCESSOR DEBUG: Grouping agents from self.agents (standalone agents)")
             for agent_name, agent_data in self.agents.items():
                 orchestration_id = agent_data.get('agent_orchestration_id', 'default')
+                logger.info(f"🔍 PROCESSOR DEBUG: Agent {agent_name} has orchestration_id: {orchestration_id}")
                 if orchestration_id not in agent_groups:
                     agent_groups[orchestration_id] = {'agents': [], 'components': []}
-                
+
                 if agent_data.get('level', 2) == 2:  # Agent level
                     agent_groups[orchestration_id]['agents'].append(agent_data)
+                    logger.info(f"🔍 PROCESSOR DEBUG: Added {agent_name} to agent group for orchestration {orchestration_id}")
                 else:  # Component level
                     agent_groups[orchestration_id]['components'].append(agent_data)
+                    logger.info(f"🔍 PROCESSOR DEBUG: Added {agent_name} to component group for orchestration {orchestration_id}")
+
+            logger.info(f"🔍 PROCESSOR DEBUG: Final agent_groups: {list(agent_groups.keys())}")
+            for orch_id, group in agent_groups.items():
+                logger.info(f"🔍 PROCESSOR DEBUG: Group {orch_id}: {len(group['agents'])} agents, {len(group['components'])} components")
             
             # CRITICAL FIX: Also process all spans to find LLM spans that should be aggregated
             # This is similar to how LangChain processor works
@@ -322,7 +348,15 @@ class LangGraphProcessor(FrameworkProcessor):
                 'orchestration_count': len(self.agent_orchestrations)
             }
         )
-        
+
+        # 🔍 DEBUG LOGGING: Show final result
+        logger.info(f"🔍 PROCESSOR DEBUG: Final hierarchical trace result:")
+        logger.info(f"🔍 PROCESSOR DEBUG: Total agents in trace: {len(agents)}")
+        for i, agent in enumerate(agents):
+            logger.info(f"🔍 PROCESSOR DEBUG: Agent {i}: {agent.get('name')} (level {agent.get('level')}, type: {agent.get('component_type')})")
+            if 'agents' in agent and agent['agents']:
+                logger.info(f"🔍 PROCESSOR DEBUG:   Sub-agents: {[a.get('name') for a in agent.get('agents', [])]}")
+
         logger.info(f"Processed LangGraph trace {trace_id} with {len(agents)} agents")
         return hierarchical_trace
     
