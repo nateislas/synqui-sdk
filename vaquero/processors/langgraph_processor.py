@@ -165,10 +165,34 @@ class LangGraphProcessor(FrameworkProcessor):
                     agent_groups[orchestration_id]['components'].append(agent_data)
                     logger.info(f"🔍 PROCESSOR DEBUG: Added {agent_name} to component group for orchestration {orchestration_id}")
 
-            logger.info(f"🔍 PROCESSOR DEBUG: Final agent_groups: {list(agent_groups.keys())}")
+            logger.info(f"🔍 PROCESSOR DEBUG: Final agent_groups after self.agents: {list(agent_groups.keys())}")
             for orch_id, group in agent_groups.items():
                 logger.info(f"🔍 PROCESSOR DEBUG: Group {orch_id}: {len(group['agents'])} agents, {len(group['components'])} components")
-            
+
+            # CRITICAL FIX: Also process agent orchestrations to create logical agents
+            logger.info(f"🔍 PROCESSOR DEBUG: Processing agent orchestrations")
+            for orch_id, orch_data in self.agent_orchestrations.items():
+                if orch_id not in agent_groups:
+                    agent_groups[orch_id] = {'agents': [], 'components': []}
+
+                logger.info(f"🔍 PROCESSOR DEBUG: Processing orchestration {orch_id} with {len(orch_data.get('agents', []))} agent entries")
+
+                # Add agents from orchestrations to agent_groups
+                for agent_data in orch_data.get('agents', []):
+                    agent_name = agent_data.get('name', 'unknown')
+                    agent_level = agent_data.get('level', 2)
+
+                    if agent_level == 2:  # Agent level
+                        agent_groups[orch_id]['agents'].append(agent_data)
+                        logger.info(f"🔍 PROCESSOR DEBUG: Added {agent_name} to agent group for orchestration {orch_id}")
+                    else:  # Component level
+                        agent_groups[orch_id]['components'].append(agent_data)
+                        logger.info(f"🔍 PROCESSOR DEBUG: Added {agent_name} to component group for orchestration {orch_id}")
+
+            logger.info(f"🔍 PROCESSOR DEBUG: Final agent_groups after orchestrations: {list(agent_groups.keys())}")
+            for orch_id, group in agent_groups.items():
+                logger.info(f"🔍 PROCESSOR DEBUG: Group {orch_id}: {len(group['agents'])} agents, {len(group['components'])} components")
+
             # CRITICAL FIX: Also process all spans to find LLM spans that should be aggregated
             # This is similar to how LangChain processor works
             logger.debug(f"🔍 Processing {len(self.spans)} total spans for hierarchical aggregation")
@@ -203,24 +227,32 @@ class LangGraphProcessor(FrameworkProcessor):
                     'agents': []
                 }
                 
-                # Add individual agents (level 3)
+                # CRITICAL FIX: Aggregate agent_data by agent_name before creating level 3 agents
+                # Multiple spans with same agent_name should become one logical agent
+                agents_by_name = {}
                 for agent_data in group['agents']:
-                    logger.debug(f"🔍 Processing agent: {agent_data['name']}")
-                    logger.debug(f"🔍 Agent spans count: {len(agent_data['spans'])}")
-                    
-                    # CRITICAL FIX: Get ALL spans that belong to this agent, not just the agent's own spans
-                    # This includes LLM spans, tool spans, etc. that should be aggregated
                     agent_name = agent_data['name']
+                    if agent_name not in agents_by_name:
+                        agents_by_name[agent_name] = []
+                    agents_by_name[agent_name].append(agent_data)
+
+                logger.info(f"🔍 PROCESSOR DEBUG: Orchestration {orchestration_id} has {len(agents_by_name)} unique agent names: {list(agents_by_name.keys())}")
+
+                # Add individual agents (level 3) - now aggregated by name
+                for agent_name, agent_data_list in agents_by_name.items():
+                    logger.debug(f"🔍 Processing aggregated agent: {agent_name} with {len(agent_data_list)} data entries")
+
+                    # Aggregate all spans from all agent_data entries with this name
                     all_agent_spans = []
-                    
-                    # Add the agent's own spans
-                    all_agent_spans.extend(agent_data['spans'])
-                    
-                    # Add any spans that belong to this agent from the span groups
+                    for agent_data in agent_data_list:
+                        all_agent_spans.extend(agent_data['spans'])
+                        logger.debug(f"🔍 Added {len(agent_data['spans'])} spans from agent_data entry")
+
+                    # Add any additional spans that belong to this agent from span groups
                     if agent_name in span_groups:
                         all_agent_spans.extend(span_groups[agent_name])
                         logger.debug(f"🔍 Added {len(span_groups[agent_name])} additional spans from span groups")
-                    
+
                     # Remove duplicates based on span_id or content
                     unique_spans = []
                     seen_spans = set()
@@ -229,25 +261,25 @@ class LangGraphProcessor(FrameworkProcessor):
                         if span_key not in seen_spans:
                             unique_spans.append(span)
                             seen_spans.add(span_key)
-                    
-                    logger.debug(f"🔍 Total unique spans for agent {agent_name}: {len(unique_spans)}")
-                    
+
+                    logger.debug(f"🔍 Total unique spans for aggregated agent {agent_name}: {len(unique_spans)}")
+
                     # Log span details for debugging
                     for i, span in enumerate(unique_spans):
                         logger.debug(f"🔍 Agent span {i}: {span.get('agent_name', 'unknown')} - "
                                    f"tokens: {span.get('input_tokens', 0)}+{span.get('output_tokens', 0)}, "
                                    f"cost: {span.get('cost', 0.0)}, duration: {span.get('duration', 0)}")
-                    
+
                     model_info = self._extract_model_info(unique_spans)
                     logger.debug(f"🔍 Extracted model info: {model_info}")
-                    
+
                     total_tokens = sum(span.get('input_tokens', 0) + span.get('output_tokens', 0) for span in unique_spans)
                     total_cost = sum(span.get('cost', 0) for span in unique_spans)
-                    
-                    logger.debug(f"🔍 Calculated metrics - total_tokens: {total_tokens}, total_cost: {total_cost}")
-                    
+
+                    logger.debug(f"🔍 Calculated metrics for aggregated agent {agent_name} - total_tokens: {total_tokens}, total_cost: {total_cost}")
+
                     agent_entry = {
-                        'name': agent_data['name'],
+                        'name': agent_name,  # Use aggregated name
                         'level': 3,  # Individual agents are level 3
                         'framework': 'langgraph',
                         'component_type': 'agent',
@@ -263,19 +295,20 @@ class LangGraphProcessor(FrameworkProcessor):
                         'model_info': model_info,
                         'agents': []
                     }
-                    
-                    logger.debug(f"🔍 Created agent entry: {agent_entry['name']} with duration: {agent_entry['duration']}, tokens: {agent_entry['total_tokens']}, cost: {agent_entry['total_cost']}")
-                    
+
+                    logger.debug(f"🔍 Created aggregated agent entry: {agent_entry['name']} with {len(unique_spans)} spans, duration: {agent_entry['duration']}, tokens: {agent_entry['total_tokens']}, cost: {agent_entry['total_cost']}")
+
                     # Add components (level 4) as sub-agents
+                    # Note: Components are not aggregated by name since they're less common
                     for component_data in group['components']:
-                        if component_data.get('parent_agent_id') == agent_data['name']:
+                        if component_data.get('parent_agent_id') == agent_name:
                             # Calculate component metrics
                             component_tokens = sum(span.get('input_tokens', 0) + span.get('output_tokens', 0) for span in component_data['spans'])
                             component_cost = sum(span.get('cost', 0) for span in component_data['spans'])
                             component_model_info = self._extract_model_info(component_data['spans'])
-                            
+
                             logger.debug(f"🔍 Component {component_data['name']} - tokens: {component_tokens}, cost: {component_cost}")
-                            
+
                             component_entry = {
                                 'name': component_data['name'],
                                 'level': 4,  # Components are level 4
@@ -294,11 +327,11 @@ class LangGraphProcessor(FrameworkProcessor):
                                 'agents': []
                             }
                             agent_entry['agents'].append(component_entry)
-                            
+
                             # Aggregate component metrics to parent agent
                             agent_entry['total_tokens'] += component_tokens
                             agent_entry['total_cost'] += component_cost
-                    
+
                     orchestration_entry['agents'].append(agent_entry)
                 
                 session_orchestration['agents'].append(orchestration_entry)

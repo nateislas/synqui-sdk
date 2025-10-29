@@ -374,7 +374,29 @@ class UnifiedTraceCollector:
             self._send_batch_to_api(batch_data)
             
             logger.info(f"Sent hierarchical trace to database: {hierarchical_trace.trace_id}")
-            logger.info(f"  Logical agents: {len([a for a in hierarchical_trace.agents if a.get('level') == 1])}")
+            # Count logical agents based on framework - LangGraph has logical agents nested in level 2 orchestrations, LangChain at level 1
+            logical_agents_count = 0
+            unique_langgraph_agents = set()  # Track unique agent names to avoid double counting
+
+            for agent in hierarchical_trace.agents:
+                framework = agent.get('framework', 'unknown')
+                level = agent.get('level', 1)
+
+                if framework == 'langgraph':
+                    # For LangGraph, count unique level 3 agents nested within level 2 orchestrations
+                    if level == 2 and 'agents' in agent:
+                        for sub_agent in agent['agents']:
+                            if (sub_agent.get('level') == 3 and
+                                sub_agent.get('component_type') == 'agent' and
+                                sub_agent.get('name') not in ['__start__', 'unknown', 'user_message']):  # Exclude system agents
+                                agent_name = sub_agent.get('name')
+                                if agent_name and agent_name not in unique_langgraph_agents:
+                                    unique_langgraph_agents.add(agent_name)
+                                    logical_agents_count += 1
+                                    logger.info(f"🔍 Counted LangGraph logical agent: {agent_name}")
+                elif framework in ['langchain', 'unknown'] and level == 1:
+                    logical_agents_count += 1
+            logger.info(f"  Logical agents: {logical_agents_count}")
             logger.info(f"  Internal components: {len([a for a in hierarchical_trace.agents if a.get('level') == 2])}")
             # Log component types
             component_types = {}
