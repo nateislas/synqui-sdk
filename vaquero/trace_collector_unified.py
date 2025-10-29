@@ -48,6 +48,8 @@ class UnifiedTraceCollector:
             logger.warning("Span has no trace_id, skipping")
             return
         
+        logger.debug(f"Processing span with trace_id: {trace_id}, agent_name: {span_data.get('agent_name', 'unknown')}, component_type: {span_data.get('component_type', 'unknown')}")
+        
         # Get or create processor for this trace
         if trace_id not in self.trace_processors:
             framework = self._detect_framework(span_data)
@@ -57,26 +59,36 @@ class UnifiedTraceCollector:
         # Add span to appropriate processor
         processor = self.trace_processors[trace_id]
         processor.add_span(span_data)
+        logger.debug(f"Added span to processor for trace {trace_id}")
     
     def _detect_framework(self, span_data: Dict[str, Any]) -> str:
         """Detect framework from span data."""
-        for framework, processor in self.processors.items():
-            if processor.detect_framework(span_data):
-                return framework
+        # Check LangGraph first since it has more specific detection
+        if self.processors['langgraph'].detect_framework(span_data):
+            return 'langgraph'
+        
+        # Then check LangChain
+        if self.processors['langchain'].detect_framework(span_data):
+            return 'langchain'
         
         # Default to langchain for backward compatibility
         return 'langchain'
     
     def finalize_trace(self, trace_id: str) -> None:
         """Finalize trace and send to database."""
+        print(f"🔍 TRACE COLLECTOR: Finalizing trace {trace_id}")
+        
         if trace_id not in self.trace_processors:
+            print(f"🔍 TRACE COLLECTOR: No processor found for trace {trace_id}")
             logger.warning(f"No processor found for trace {trace_id}")
             return
         
         try:
             processor = self.trace_processors[trace_id]
+            print(f"🔍 TRACE COLLECTOR: Processing trace with {type(processor).__name__}")
             hierarchical_trace = processor.process_trace(trace_id)
             
+            print(f"🔍 TRACE COLLECTOR: Sending hierarchical trace to database")
             # Send to database
             self._send_to_database(hierarchical_trace)
             
@@ -460,5 +472,18 @@ class UnifiedTraceCollector:
             return None
     
     def shutdown(self):
-        """Shutdown the unified trace collector."""
-        logger.debug("Unified trace collector shutdown")
+        """Shutdown the unified trace collector and finalize all pending traces."""
+        logger.info("Unified trace collector shutdown - finalizing all pending traces")
+        
+        # Finalize all pending traces before shutdown
+        pending_traces = list(self.trace_processors.keys())
+        logger.info(f"Finalizing {len(pending_traces)} pending traces before shutdown")
+        
+        for trace_id in pending_traces:
+            try:
+                logger.info(f"Finalizing trace {trace_id} during shutdown")
+                self.finalize_trace(trace_id)
+            except Exception as e:
+                logger.error(f"Failed to finalize trace {trace_id} during shutdown: {e}")
+        
+        logger.info("Unified trace collector shutdown complete")

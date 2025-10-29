@@ -3,6 +3,7 @@
 import asyncio
 import functools
 import logging
+import signal
 import time
 import atexit
 from contextlib import asynccontextmanager, contextmanager
@@ -74,6 +75,21 @@ class VaqueroSDK:
         # Register automatic shutdown to ensure traces are flushed on program exit
         if self._enabled:
             atexit.register(self.shutdown)
+            
+            # Register signal handler for graceful shutdown on Ctrl+C
+            # Only register signal handlers if we're in the main thread
+            try:
+                def signal_handler(signum, frame):
+                    logger.info(f"Received signal {signum}, shutting down gracefully...")
+                    self.shutdown()
+                    exit(0)
+                
+                signal.signal(signal.SIGINT, signal_handler)
+                signal.signal(signal.SIGTERM, signal_handler)
+            except ValueError as e:
+                # Signal handlers can only be registered from the main thread
+                logger.debug(f"Could not register signal handlers (not in main thread): {e}")
+                # This is expected in some environments like Streamlit, Jupyter, etc.
 
         logger.info(f"Vaquero SDK initialized (enabled={self._enabled})")
 
@@ -770,6 +786,15 @@ class VaqueroSDK:
         """
         # Stop auto-instrumentation
         self._stop_auto_instrumentation()
+        
+        # Shutdown all LangGraph handlers first (they need to finalize traces)
+        try:
+            from .langgraph import shutdown_all_langgraph_handlers
+            shutdown_all_langgraph_handlers()
+        except ImportError:
+            logger.debug("LangGraph not available, skipping handler shutdown")
+        except Exception as e:
+            logger.error(f"Failed to shutdown LangGraph handlers: {e}")
         
         # Shutdown trace collector
         if self._trace_collector:

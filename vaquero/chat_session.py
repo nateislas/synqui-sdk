@@ -50,6 +50,9 @@ class ChatSession:
 
         # Status
         self.status = "active"  # 'active', 'timeout', 'ended', 'cancelled'
+        
+        # Callback mechanism for timeout events
+        self._timeout_callbacks = []
 
         logger.info(f"Created chat session {self.session_id} of type {self.session_type}")
 
@@ -71,6 +74,34 @@ class ChatSession:
         self.update_activity()
         logger.debug(f"Added message to session {self.session_id}: tokens={tokens}, cost={cost}")
 
+    def _register_timeout_callback(self, callback) -> None:
+        """Register a callback to be called when session times out.
+        
+        Args:
+            callback: Callable that takes the session as argument
+        """
+        if callback not in self._timeout_callbacks:
+            self._timeout_callbacks.append(callback)
+            logger.debug(f"Registered timeout callback for session {self.session_id}")
+
+    def _unregister_timeout_callback(self, callback) -> None:
+        """Unregister a timeout callback.
+        
+        Args:
+            callback: Callable to unregister
+        """
+        if callback in self._timeout_callbacks:
+            self._timeout_callbacks.remove(callback)
+            logger.debug(f"Unregistered timeout callback for session {self.session_id}")
+
+    def _notify_timeout_callbacks(self) -> None:
+        """Notify all registered timeout callbacks."""
+        for callback in self._timeout_callbacks:
+            try:
+                callback(self)
+            except Exception as e:
+                logger.error(f"Error in timeout callback for session {self.session_id}: {e}")
+
     def should_end_session(self) -> bool:
         """Check if the session should end due to timeout or max duration.
 
@@ -87,11 +118,15 @@ class ChatSession:
         if timeout_reached:
             self.status = "timeout"
             logger.info(f"Session {self.session_id} ended due to timeout")
+            # Notify timeout callbacks
+            self._notify_timeout_callbacks()
             return True
 
         if max_duration_reached:
             self.status = "ended"
             logger.info(f"Session {self.session_id} ended due to max duration")
+            # Notify timeout callbacks
+            self._notify_timeout_callbacks()
             return True
 
         return False

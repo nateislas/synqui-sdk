@@ -21,12 +21,23 @@ class LangGraphProcessor(FrameworkProcessor):
         
         agent_name = span_data.get('agent_name', '')
         component_type = span_data.get('component_type', 'agent')
+        
+        # Enhanced logging for debugging
         logger.info(f"📥 Processing LangGraph span: {agent_name} (type: {component_type})")
+        logger.debug(f"🔍 Span data keys: {list(span_data.keys())}")
+        logger.debug(f"🔍 Span duration: {span_data.get('duration', 'N/A')}")
+        logger.debug(f"🔍 Span tokens - input: {span_data.get('input_tokens', 0)}, output: {span_data.get('output_tokens', 0)}")
+        logger.debug(f"🔍 Span cost: {span_data.get('cost', 0.0)}")
+        logger.debug(f"🔍 Span status: {span_data.get('status', 'unknown')}")
+        logger.debug(f"🔍 Span start_time: {span_data.get('start_time', 'N/A')}")
+        logger.debug(f"🔍 Span end_time: {span_data.get('end_time', 'N/A')}")
         
         # Extract session information
         session_id = span_data.get('session_id')
         chat_session_id = span_data.get('chat_session_id')
         agent_orchestration_id = span_data.get('agent_orchestration_id')
+        
+        logger.debug(f"🔍 Session info - session_id: {session_id}, chat_session_id: {chat_session_id}, orchestration_id: {agent_orchestration_id}")
         
         # Create or update agent orchestration
         if agent_orchestration_id and agent_orchestration_id not in self.agent_orchestrations:
@@ -132,6 +143,23 @@ class LangGraphProcessor(FrameworkProcessor):
                 else:  # Component level
                     agent_groups[orchestration_id]['components'].append(agent_data)
             
+            # CRITICAL FIX: Also process all spans to find LLM spans that should be aggregated
+            # This is similar to how LangChain processor works
+            logger.debug(f"🔍 Processing {len(self.spans)} total spans for hierarchical aggregation")
+            
+            # Group all spans by their parent context
+            span_groups = {}
+            for span in self.spans:
+                # Find the parent agent for this span
+                parent_agent = self._find_parent_agent_for_span(span)
+                if parent_agent not in span_groups:
+                    span_groups[parent_agent] = []
+                span_groups[parent_agent].append(span)
+            
+            logger.debug(f"🔍 Grouped spans by parent: {list(span_groups.keys())}")
+            for parent, spans in span_groups.items():
+                logger.debug(f"🔍 Parent {parent}: {len(spans)} spans")
+            
             # Process each orchestration group
             for orchestration_id, group in agent_groups.items():
                 # Create agent orchestration entry (level 2)
@@ -151,9 +179,46 @@ class LangGraphProcessor(FrameworkProcessor):
                 
                 # Add individual agents (level 3)
                 for agent_data in group['agents']:
-                    model_info = self._extract_model_info(agent_data['spans'])
-                    total_tokens = sum(span.get('input_tokens', 0) + span.get('output_tokens', 0) for span in agent_data['spans'])
-                    total_cost = sum(span.get('cost', 0) for span in agent_data['spans'])
+                    logger.debug(f"🔍 Processing agent: {agent_data['name']}")
+                    logger.debug(f"🔍 Agent spans count: {len(agent_data['spans'])}")
+                    
+                    # CRITICAL FIX: Get ALL spans that belong to this agent, not just the agent's own spans
+                    # This includes LLM spans, tool spans, etc. that should be aggregated
+                    agent_name = agent_data['name']
+                    all_agent_spans = []
+                    
+                    # Add the agent's own spans
+                    all_agent_spans.extend(agent_data['spans'])
+                    
+                    # Add any spans that belong to this agent from the span groups
+                    if agent_name in span_groups:
+                        all_agent_spans.extend(span_groups[agent_name])
+                        logger.debug(f"🔍 Added {len(span_groups[agent_name])} additional spans from span groups")
+                    
+                    # Remove duplicates based on span_id or content
+                    unique_spans = []
+                    seen_spans = set()
+                    for span in all_agent_spans:
+                        span_key = span.get('span_id') or str(span.get('start_time', '')) + str(span.get('agent_name', ''))
+                        if span_key not in seen_spans:
+                            unique_spans.append(span)
+                            seen_spans.add(span_key)
+                    
+                    logger.debug(f"🔍 Total unique spans for agent {agent_name}: {len(unique_spans)}")
+                    
+                    # Log span details for debugging
+                    for i, span in enumerate(unique_spans):
+                        logger.debug(f"🔍 Agent span {i}: {span.get('agent_name', 'unknown')} - "
+                                   f"tokens: {span.get('input_tokens', 0)}+{span.get('output_tokens', 0)}, "
+                                   f"cost: {span.get('cost', 0.0)}, duration: {span.get('duration', 0)}")
+                    
+                    model_info = self._extract_model_info(unique_spans)
+                    logger.debug(f"🔍 Extracted model info: {model_info}")
+                    
+                    total_tokens = sum(span.get('input_tokens', 0) + span.get('output_tokens', 0) for span in unique_spans)
+                    total_cost = sum(span.get('cost', 0) for span in unique_spans)
+                    
+                    logger.debug(f"🔍 Calculated metrics - total_tokens: {total_tokens}, total_cost: {total_cost}")
                     
                     agent_entry = {
                         'name': agent_data['name'],
@@ -163,9 +228,9 @@ class LangGraphProcessor(FrameworkProcessor):
                         'parent_agent_id': orchestration_entry['name'],
                         'session_id': trace_session_id,
                         'chat_session_id': chat_session_id,
-                        'start_time': self._get_earliest_start_time(agent_data['spans']),
-                        'end_time': self._get_latest_end_time(agent_data['spans']),
-                        'duration': self._calculate_duration(agent_data['spans']),
+                        'start_time': self._get_earliest_start_time(unique_spans),
+                        'end_time': self._get_latest_end_time(unique_spans),
+                        'duration': self._calculate_duration(unique_spans),
                         'status': 'completed',
                         'total_tokens': total_tokens,
                         'total_cost': total_cost,
@@ -173,9 +238,18 @@ class LangGraphProcessor(FrameworkProcessor):
                         'agents': []
                     }
                     
+                    logger.debug(f"🔍 Created agent entry: {agent_entry['name']} with duration: {agent_entry['duration']}, tokens: {agent_entry['total_tokens']}, cost: {agent_entry['total_cost']}")
+                    
                     # Add components (level 4) as sub-agents
                     for component_data in group['components']:
                         if component_data.get('parent_agent_id') == agent_data['name']:
+                            # Calculate component metrics
+                            component_tokens = sum(span.get('input_tokens', 0) + span.get('output_tokens', 0) for span in component_data['spans'])
+                            component_cost = sum(span.get('cost', 0) for span in component_data['spans'])
+                            component_model_info = self._extract_model_info(component_data['spans'])
+                            
+                            logger.debug(f"🔍 Component {component_data['name']} - tokens: {component_tokens}, cost: {component_cost}")
+                            
                             component_entry = {
                                 'name': component_data['name'],
                                 'level': 4,  # Components are level 4
@@ -188,9 +262,16 @@ class LangGraphProcessor(FrameworkProcessor):
                                 'end_time': self._get_latest_end_time(component_data['spans']),
                                 'duration': self._calculate_duration(component_data['spans']),
                                 'status': 'completed',
+                                'total_tokens': component_tokens,
+                                'total_cost': component_cost,
+                                'model_info': component_model_info,
                                 'agents': []
                             }
                             agent_entry['agents'].append(component_entry)
+                            
+                            # Aggregate component metrics to parent agent
+                            agent_entry['total_tokens'] += component_tokens
+                            agent_entry['total_cost'] += component_cost
                     
                     orchestration_entry['agents'].append(agent_entry)
                 
@@ -249,12 +330,25 @@ class LangGraphProcessor(FrameworkProcessor):
         """Extract model information from spans."""
         model_info = {}
         
-        for span in spans:
+        logger.debug(f"🔍 Extracting model info from {len(spans)} spans")
+        
+        for i, span in enumerate(spans):
+            logger.debug(f"🔍 Span {i}: {span.get('agent_name', 'unknown')} - "
+                        f"model_name: {span.get('model_name')}, "
+                        f"model_provider: {span.get('model_provider')}, "
+                        f"input_tokens: {span.get('input_tokens', 0)}, "
+                        f"output_tokens: {span.get('output_tokens', 0)}, "
+                        f"cost: {span.get('cost', 0.0)}")
+            
             if span.get('model_name'):
                 model_info['model_name'] = span.get('model_name')
                 model_info['model_provider'] = span.get('model_provider')
                 model_info['model_parameters'] = span.get('model_parameters')
+                logger.debug(f"🔍 Found model info: {model_info}")
                 break
+        
+        if not model_info:
+            logger.debug("🔍 No model information found in spans")
         
         return model_info
     
@@ -279,6 +373,62 @@ class LangGraphProcessor(FrameworkProcessor):
             return int((end - start).total_seconds() * 1000)
         return 0
     
+    def _find_parent_agent_for_span(self, span: Dict[str, Any]) -> str:
+        """Find the parent agent for a span based on execution context."""
+        agent_name = span.get('agent_name', '')
+        component_type = span.get('component_type', '')
+        
+        # Check if this span has explicit parent information
+        parent_span_id = span.get('parent_span_id')
+        if parent_span_id:
+            # Try to find parent agent from existing agents
+            for existing_agent_name, agent_data in self.agents.items():
+                for agent_span in agent_data['spans']:
+                    if agent_span.get('span_id') == parent_span_id:
+                        return existing_agent_name
+        
+        # Check if this is a LangGraph agent span - it should be its own parent
+        if component_type == 'agent':
+            # For LangGraph agents, the agent_name is already the correct name
+            return agent_name
+        
+        # Check if this is an LLM span - it should belong to the most recent LangGraph agent
+        if (agent_name.startswith('llm:') or component_type == 'llm'):
+            # Find the most recently created LangGraph agent
+            for existing_agent_name, agent_data in self.agents.items():
+                if agent_data.get('component_type') == 'agent':
+                    return existing_agent_name
+            # Fallback to most recent agent
+            if self.agents:
+                return list(self.agents.keys())[-1]
+
+        # Check if this is a tool span - it should belong to the most recent LangGraph agent
+        if (agent_name.startswith('tool:') or component_type == 'tool'):
+            # Find the most recently created LangGraph agent
+            for existing_agent_name, agent_data in self.agents.items():
+                if agent_data.get('component_type') == 'agent':
+                    return existing_agent_name
+            # Fallback to most recent agent
+            if self.agents:
+                return list(self.agents.keys())[-1]
+
+        # Check if this is a chain span - it should belong to the most recent LangGraph agent
+        if (agent_name.startswith('langchain:') or component_type == 'chain'):
+            # Find the most recently created LangGraph agent
+            for existing_agent_name, agent_data in self.agents.items():
+                if agent_data.get('component_type') == 'agent':
+                    return existing_agent_name
+            # Fallback to most recent agent
+            if self.agents:
+                return list(self.agents.keys())[-1]
+        
+        # Default fallback - use the most recent agent
+        if self.agents:
+            return list(self.agents.keys())[-1]
+        
+        # If no agents exist yet, this span will be orphaned
+        return 'orphaned'
+
     def detect_framework(self, span_data: Dict[str, Any]) -> bool:
         """Detect if this is a LangGraph span."""
         agent_name = span_data.get('agent_name', '')
@@ -286,8 +436,10 @@ class LangGraphProcessor(FrameworkProcessor):
         
         # Check for LangGraph indicators
         return (
-            agent_name.startswith('langgraph:') or
-            'langgraph' in str(metadata).lower() or
             span_data.get('framework') == 'langgraph' or
-            span_data.get('chat_session_id') is not None  # LangGraph workflows have chat sessions
+            span_data.get('chat_session_id') is not None or  # LangGraph workflows have chat sessions
+            # CRITICAL FIX: Also detect LLM spans that are part of LangGraph workflows
+            # by checking if there's an active LangGraph trace in the same session
+            (agent_name.startswith('llm:') and span_data.get('chat_session_id') is not None) or
+            (span_data.get('component_type') == 'agent' and span_data.get('framework') == 'langgraph')
         )
