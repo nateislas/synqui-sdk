@@ -202,10 +202,10 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             logger.info(f"🔧 LANGGRAPH NODE EXECUTION - Agent: '{agent_name}', Run ID: {run_id}, Parent: {parent_run_id}")
 
             # Set orchestration ID for real agents (not system nodes like __start__)
-            # Each agent execution gets its own orchestration ID to group related spans
+            # All agents responding to the same user message share the same orchestration ID
             if agent_name not in ['__start__', 'unknown'] and agent_name:
-                self._current_orchestration_id = str(uuid.uuid4())
-                logger.info(f"🔧 SET ORCHESTRATION ID - Created new orchestration: {self._current_orchestration_id} for agent: {agent_name}")
+                self._current_orchestration_id = f"orchestration_{self._message_sequence}"
+                logger.info(f"🔧 SET ORCHESTRATION ID - Using message-based orchestration: {self._current_orchestration_id} for agent: {agent_name} (message #{self._message_sequence})")
             else:
                 logger.debug(f"🔧 SKIP ORCHESTRATION ID - System node or unknown agent: {agent_name}")
 
