@@ -23,6 +23,14 @@ def json_serializable(obj):
         return {k: json_serializable(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
         return [json_serializable(item) for item in obj]
+    elif hasattr(obj, '__dict__'):
+        # Handle objects like ChatGeneration, AIMessage, etc.
+        try:
+            from .serialization import safe_serialize
+            return safe_serialize(obj)
+        except Exception:
+            # Fallback to string representation
+            return str(obj)
     return obj
 
 class UnifiedTraceCollector:
@@ -382,6 +390,34 @@ class UnifiedTraceCollector:
                     f"🔍 DB SEND: Preparing agent '{agent.get('name', '')}' tokens/cost -> input: {input_tokens}, output: {output_tokens}, total: {total_tokens}, cost: {cost_val}"
                 )
 
+                # Normalize input_data and output_data to always be dictionaries
+                # API requires JSONB fields to be dicts, but spans can have lists/strings/etc.
+                input_data_raw = agent.get('input_data')
+                if not isinstance(input_data_raw, dict):
+                    if input_data_raw is None:
+                        input_data_normalized = {}
+                    elif isinstance(input_data_raw, (list, tuple)):
+                        input_data_normalized = {"items": input_data_raw}
+                    elif isinstance(input_data_raw, str):
+                        input_data_normalized = {"value": input_data_raw}
+                    else:
+                        input_data_normalized = {"data": input_data_raw}
+                else:
+                    input_data_normalized = input_data_raw
+
+                output_data_raw = agent.get('output_data')
+                if not isinstance(output_data_raw, dict):
+                    if output_data_raw is None:
+                        output_data_normalized = {}
+                    elif isinstance(output_data_raw, (list, tuple)):
+                        output_data_normalized = {"items": output_data_raw}
+                    elif isinstance(output_data_raw, str):
+                        output_data_normalized = {"value": output_data_raw}
+                    else:
+                        output_data_normalized = {"data": output_data_raw}
+                else:
+                    output_data_normalized = output_data_raw
+
                 agent_data = {
                     "trace_id": hierarchical_trace.trace_id,
                     "agent_id": agent.get('agent_id', str(uuid.uuid4())),
@@ -397,8 +433,8 @@ class UnifiedTraceCollector:
                     "total_tokens": total_tokens,
                     "cost": cost_val,
                     "status": agent.get('status', 'completed'),
-                    "input_data": agent.get('input_data', {}),
-                    "output_data": agent.get('output_data', {}),
+                    "input_data": input_data_normalized,
+                    "output_data": output_data_normalized,
                     # LLM-specific fields
                     "llm_model_name": llm_model_name,
                     "llm_model_provider": llm_model_provider,

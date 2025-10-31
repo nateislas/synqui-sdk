@@ -237,7 +237,10 @@ class LangGraphProcessor(FrameworkProcessor):
             'output_tokens': span.get('output_tokens', 0),
             'total_tokens': span.get('total_tokens', 0),
             'cost': span.get('cost', 0.0),
-            'agents': []  # Components don't have sub-components
+            'agents': [],  # Components don't have sub-components
+            # Extract input/output data from span
+            'input_data': span.get('inputs', {}),
+            'output_data': span.get('outputs', {})
         }
 
         # Add optional fields
@@ -247,6 +250,14 @@ class LangGraphProcessor(FrameworkProcessor):
             agent['llm_model_name'] = span['llm_model_name']
         if span.get('llm_model_provider'):
             agent['llm_model_provider'] = span['llm_model_provider']
+        if span.get('llm_model_parameters'):
+            agent['llm_model_parameters'] = span['llm_model_parameters']
+        if span.get('prompt_hash'):
+            agent['prompt_hash'] = span['prompt_hash']
+        if span.get('prompt_name'):
+            agent['prompt_name'] = span['prompt_name']
+        if span.get('prompt_version'):
+            agent['prompt_version'] = span['prompt_version']
         if span.get('reasoning'):
             agent['reasoning'] = span['reasoning']
 

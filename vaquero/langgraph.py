@@ -12,6 +12,7 @@ import uuid
 
 from .sdk import VaqueroSDK, get_global_instance
 from .chat_session import ChatSession
+from .serialization import safe_serialize
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,44 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         # Return "unknown_node" for nodes to distinguish from other component types
         logger.info(f"🔍 NAME EXTRACTION: No match found, returning 'unknown_node'")
         return "unknown_node"
+    
+    def _detect_model_provider(self, model_name: str) -> str:
+        """
+        Detect model provider from model name.
+        
+        Args:
+            model_name: Model name (e.g., "ChatGoogleGenerativeAI", "ChatOpenAI", "gpt-4")
+            
+        Returns:
+            Provider name (google, openai, anthropic, llama, or unknown)
+        """
+        if not model_name:
+            return "unknown"
+        
+        model_lower = model_name.lower()
+        
+        # Check for Google/Gemini models
+        if ("google" in model_lower or "gemini" in model_lower or 
+            "ChatGoogleGenerativeAI" in model_name or "ChatGoogleGenerative" in model_name):
+            return "google"
+        
+        # Check for OpenAI models
+        elif ("gpt" in model_lower or "openai" in model_lower or 
+              "ChatOpenAI" in model_name or "davinci" in model_lower or 
+              "curie" in model_lower):
+            return "openai"
+        
+        # Check for Anthropic models
+        elif ("claude" in model_lower or "anthropic" in model_lower or 
+              "ChatAnthropic" in model_name):
+            return "anthropic"
+        
+        # Check for Llama models
+        elif "llama" in model_lower:
+            return "llama"
+        
+        else:
+            return "unknown"
     
     def _is_node_execution(
         self,
@@ -350,15 +389,36 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         span_id = str(uuid.uuid4())
         parent_span_id = self._runs.get(parent_run_id, {}).get('span_id') if parent_run_id else None
 
+        # Extract model name and provider
+        model_name = serialized.get('name', 'llm') if serialized else 'llm'
+        model_provider = self._detect_model_provider(model_name)
+        
+        # Extract model parameters from serialized kwargs
+        model_parameters = {}
+        if serialized and isinstance(serialized, dict):
+            kwargs = serialized.get('kwargs', {})
+            if kwargs:
+                # Extract common LLM parameters
+                for param in ['temperature', 'max_tokens', 'top_p', 'top_k', 
+                             'frequency_penalty', 'presence_penalty', 'n', 'stream']:
+                    if param in kwargs:
+                        model_parameters[param] = kwargs[param]
+                
+                # Also capture model name from kwargs if different
+                if 'model' in kwargs and kwargs['model'] != model_name:
+                    model_parameters['model'] = kwargs['model']
+
         self._runs[run_id] = {
             'span_id': span_id,
             'parent_span_id': parent_span_id,
             'start_time': datetime.utcnow(),
-            'name': serialized.get('name', 'llm') if serialized else 'llm',
+            'name': model_name,
             'component_type': 'llm',
             'prompts': prompts,
             'metadata': metadata or {},
-            'system_prompt': prompts[0] if prompts and len(prompts) > 0 else None
+            'system_prompt': prompts[0] if prompts and len(prompts) > 0 else None,
+            'llm_model_provider': model_provider,
+            'llm_model_parameters': model_parameters if model_parameters else None
         }
 
     def on_llm_new_token(
@@ -393,14 +453,175 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         if hasattr(response, 'llm_output') and response.llm_output:
             llm_metadata.update(response.llm_output)
 
+        # INFO-level logging to inspect LLMResult structure
+        logger.info(f"🔍 LLM RESULT INSPECTION: response type={type(response).__name__}")
+        logger.info(f"🔍 LLM RESULT INSPECTION: response class={type(response)}")
+        
+        # Check all attributes of response
+        response_attrs = [attr for attr in dir(response) if not attr.startswith('_')]
+        logger.info(f"🔍 LLM RESULT INSPECTION: response attributes={response_attrs}")
+        
+        # Check if it's LLMResult type
+        if 'LLMResult' in str(type(response)):
+            logger.info(f"🔍 LLM RESULT INSPECTION: This is an LLMResult object")
+            
+            # Inspect llm_output
+            if hasattr(response, 'llm_output'):
+                llm_out = response.llm_output
+                logger.info(f"🔍 LLM RESULT INSPECTION: has llm_output={llm_out is not None}")
+                if llm_out:
+                    if isinstance(llm_out, dict):
+                        logger.info(f"🔍 LLM RESULT INSPECTION: llm_output keys={list(llm_out.keys())}")
+                        logger.info(f"🔍 LLM RESULT INSPECTION: llm_output={llm_out}")
+                        if 'token_usage' in llm_out:
+                            logger.info(f"🔍 LLM RESULT INSPECTION: llm_output['token_usage']={llm_out['token_usage']}")
+                    else:
+                        logger.info(f"🔍 LLM RESULT INSPECTION: llm_output type={type(llm_out)}, value={llm_out}")
+            
+            # Inspect generations
+            if hasattr(response, 'generations'):
+                gens = response.generations
+                logger.info(f"🔍 LLM RESULT INSPECTION: has generations={gens is not None}")
+                if gens and isinstance(gens, list) and len(gens) > 0:
+                    logger.info(f"🔍 LLM RESULT INSPECTION: generations count={len(gens)}")
+                    if len(gens[0]) > 0:
+                        first_gen = gens[0][0]
+                        logger.info(f"🔍 LLM RESULT INSPECTION: first generation type={type(first_gen).__name__}")
+                        logger.info(f"🔍 LLM RESULT INSPECTION: first generation attributes={[attr for attr in dir(first_gen) if not attr.startswith('_')]}")
+                        
+                        # Check if generation has message with response_metadata
+                        if hasattr(first_gen, 'message'):
+                            msg = first_gen.message
+                            logger.info(f"🔍 LLM RESULT INSPECTION: message type={type(msg).__name__}")
+                            if hasattr(msg, 'response_metadata'):
+                                meta = msg.response_metadata
+                                logger.info(f"🔍 LLM RESULT INSPECTION: response_metadata type={type(meta)}")
+                                logger.info(f"🔍 LLM RESULT INSPECTION: response_metadata={meta}")
+                                if isinstance(meta, dict) and 'token_usage' in meta:
+                                    logger.info(f"🔍 LLM RESULT INSPECTION: response_metadata['token_usage']={meta['token_usage']}")
+                                
+                                # Also check usage_metadata in message
+                                if hasattr(msg, 'usage_metadata'):
+                                    usage = msg.usage_metadata
+                                    logger.info(f"🔍 LLM RESULT INSPECTION: message.usage_metadata type={type(usage)}")
+                                    logger.info(f"🔍 LLM RESULT INSPECTION: message.usage_metadata={usage}")
+        else:
+            # Standard response object inspection
+            logger.info(f"🔍 LLM RESULT INSPECTION: has usage_metadata={hasattr(response, 'usage_metadata')}")
+            logger.info(f"🔍 LLM RESULT INSPECTION: has llm_output={hasattr(response, 'llm_output')}")
+            if hasattr(response, 'llm_output') and response.llm_output:
+                logger.info(f"🔍 LLM RESULT INSPECTION: llm_output keys={list(response.llm_output.keys()) if isinstance(response.llm_output, dict) else 'not_dict'}")
+                logger.info(f"🔍 LLM RESULT INSPECTION: llm_output={response.llm_output}")
+            if hasattr(response, 'usage_metadata'):
+                usage = response.usage_metadata
+                logger.info(f"🔍 LLM RESULT INSPECTION: usage_metadata type={type(usage)}")
+                logger.info(f"🔍 LLM RESULT INSPECTION: usage_metadata attributes={[attr for attr in dir(usage) if not attr.startswith('_')]}")
+                if hasattr(usage, 'input_tokens'):
+                    logger.info(f"🔍 LLM RESULT INSPECTION: usage.input_tokens={getattr(usage, 'input_tokens', None)}")
+                if hasattr(usage, 'output_tokens'):
+                    logger.info(f"🔍 LLM RESULT INSPECTION: usage.output_tokens={getattr(usage, 'output_tokens', None)}")
+                if hasattr(usage, 'total_tokens'):
+                    logger.info(f"🔍 LLM RESULT INSPECTION: usage.total_tokens={getattr(usage, 'total_tokens', None)}")
+
         # Extract token counts if available
+        # Try usage_metadata first (LangChain standard)
         if hasattr(response, 'usage_metadata'):
             usage = response.usage_metadata
-            llm_metadata.update({
-                'input_tokens': getattr(usage, 'input_tokens', 0),
-                'output_tokens': getattr(usage, 'output_tokens', 0),
-                'total_tokens': getattr(usage, 'total_tokens', 0)
-            })
+            input_tokens = getattr(usage, 'input_tokens', None)
+            output_tokens = getattr(usage, 'output_tokens', None)
+            total_tokens = getattr(usage, 'total_tokens', None)
+            
+            if input_tokens is not None or output_tokens is not None or total_tokens is not None:
+                llm_metadata.update({
+                    'input_tokens': input_tokens or 0,
+                    'output_tokens': output_tokens or 0,
+                    'total_tokens': total_tokens or ((input_tokens or 0) + (output_tokens or 0))
+                })
+                logger.info(f"🔢 TOKEN EXTRACTION (usage_metadata): input={input_tokens}, output={output_tokens}, total={total_tokens}")
+        
+        # Also check llm_output for token usage (fallback for different response formats)
+        if hasattr(response, 'llm_output') and response.llm_output:
+            if isinstance(response.llm_output, dict):
+                if 'token_usage' in response.llm_output:
+                    token_usage = response.llm_output['token_usage']
+                    logger.debug(f"🔍 LLM RESPONSE DEBUG: token_usage={token_usage}")
+                    if isinstance(token_usage, dict):
+                        # Only update if usage_metadata didn't set them or set them to 0
+                        if 'input_tokens' not in llm_metadata or llm_metadata.get('input_tokens', 0) == 0:
+                            llm_metadata['input_tokens'] = token_usage.get('prompt_tokens', 0) or token_usage.get('input_tokens', 0) or 0
+                            logger.info(f"🔢 TOKEN EXTRACTION (llm_output.token_usage): input={llm_metadata['input_tokens']}")
+                        if 'output_tokens' not in llm_metadata or llm_metadata.get('output_tokens', 0) == 0:
+                            llm_metadata['output_tokens'] = token_usage.get('completion_tokens', 0) or token_usage.get('output_tokens', 0) or 0
+                            logger.info(f"🔢 TOKEN EXTRACTION (llm_output.token_usage): output={llm_metadata['output_tokens']}")
+                        if 'total_tokens' not in llm_metadata or llm_metadata.get('total_tokens', 0) == 0:
+                            llm_metadata['total_tokens'] = token_usage.get('total_tokens', 0) or (llm_metadata.get('input_tokens', 0) + llm_metadata.get('output_tokens', 0))
+                            logger.info(f"🔢 TOKEN EXTRACTION (llm_output.token_usage): total={llm_metadata['total_tokens']}")
+                
+                # Also check for direct token fields in llm_output
+                if 'input_tokens' not in llm_metadata and 'input_token_count' in response.llm_output:
+                    llm_metadata['input_tokens'] = response.llm_output.get('input_token_count', 0)
+                    logger.info(f"🔢 TOKEN EXTRACTION (llm_output.input_token_count): input={llm_metadata['input_tokens']}")
+                if 'output_tokens' not in llm_metadata and 'output_token_count' in response.llm_output:
+                    llm_metadata['output_tokens'] = response.llm_output.get('output_token_count', 0)
+                    logger.info(f"🔢 TOKEN EXTRACTION (llm_output.output_token_count): output={llm_metadata['output_tokens']}")
+        
+        # Check generations for token usage - PRIMARY PATH for LLMResult objects
+        if hasattr(response, 'generations') and response.generations:
+            for gen_list in response.generations:
+                if isinstance(gen_list, list) and len(gen_list) > 0:
+                    gen = gen_list[0]
+                    if hasattr(gen, 'message'):
+                        msg = gen.message
+                        
+                        # PRIORITY 1: Check message.usage_metadata (LangChain standard for LLMResult)
+                        if hasattr(msg, 'usage_metadata'):
+                            usage_meta = msg.usage_metadata
+                            if isinstance(usage_meta, dict):
+                                input_toks = usage_meta.get('input_tokens') or usage_meta.get('prompt_tokens', 0)
+                                output_toks = usage_meta.get('output_tokens') or usage_meta.get('completion_tokens', 0)
+                                total_toks = usage_meta.get('total_tokens', 0) or (input_toks + output_toks)
+                                
+                                if input_toks or output_toks:
+                                    llm_metadata['input_tokens'] = input_toks
+                                    llm_metadata['output_tokens'] = output_toks
+                                    llm_metadata['total_tokens'] = total_toks
+                                    logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.usage_metadata): input={input_toks}, output={output_toks}, total={total_toks}")
+                                    break  # Found tokens, use this
+                        
+                        # PRIORITY 2: Check message.response_metadata.token_usage (alternative format)
+                        if hasattr(msg, 'response_metadata'):
+                            metadata = msg.response_metadata
+                            if isinstance(metadata, dict) and 'token_usage' in metadata:
+                                token_usage = metadata['token_usage']
+                                if isinstance(token_usage, dict):
+                                    if 'input_tokens' not in llm_metadata or llm_metadata.get('input_tokens', 0) == 0:
+                                        llm_metadata['input_tokens'] = token_usage.get('prompt_tokens', 0) or token_usage.get('input_tokens', 0) or 0
+                                        logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.response_metadata.token_usage): input={llm_metadata['input_tokens']}")
+                                    if 'output_tokens' not in llm_metadata or llm_metadata.get('output_tokens', 0) == 0:
+                                        llm_metadata['output_tokens'] = token_usage.get('completion_tokens', 0) or token_usage.get('output_tokens', 0) or 0
+                                        logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.response_metadata.token_usage): output={llm_metadata['output_tokens']}")
+                                    if 'total_tokens' not in llm_metadata or llm_metadata.get('total_tokens', 0) == 0:
+                                        llm_metadata['total_tokens'] = token_usage.get('total_tokens', 0) or (llm_metadata.get('input_tokens', 0) + llm_metadata.get('output_tokens', 0))
+                                        logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.response_metadata.token_usage): total={llm_metadata['total_tokens']}")
+                                    break  # Found tokens, use this
+        
+        # Final check: ensure we have at least zeros
+        if 'input_tokens' not in llm_metadata:
+            llm_metadata['input_tokens'] = 0
+        if 'output_tokens' not in llm_metadata:
+            llm_metadata['output_tokens'] = 0
+        if 'total_tokens' not in llm_metadata:
+            llm_metadata['total_tokens'] = llm_metadata.get('input_tokens', 0) + llm_metadata.get('output_tokens', 0)
+        
+        # Log final token extraction result
+        if llm_metadata.get('input_tokens') or llm_metadata.get('output_tokens'):
+            logger.info(f"🔢 TOKEN EXTRACTION FINAL: input={llm_metadata.get('input_tokens', 0)}, "
+                       f"output={llm_metadata.get('output_tokens', 0)}, "
+                       f"total={llm_metadata.get('total_tokens', 0)}")
+        else:
+            logger.warning(f"⚠️ TOKEN EXTRACTION FAILED: No tokens found in response. response type={type(response)}, "
+                          f"has usage_metadata={hasattr(response, 'usage_metadata')}, "
+                          f"has llm_output={hasattr(response, 'llm_output')}")
 
         # Merge stored metadata with LLM metadata
         stored_metadata = run_info.get('metadata', {})
@@ -417,13 +638,34 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             'end_time': end_time.isoformat(),
             'status': 'completed',
             'inputs': {'prompts': run_info.get('prompts', [])},
-            'outputs': {'response': getattr(response, 'generations', []) if hasattr(response, 'generations') else []},
+            'outputs': {'response': safe_serialize(getattr(response, 'generations', []) if hasattr(response, 'generations') else [])},
             'metadata': stored_metadata
         }
 
         # Add system prompt if stored
         if run_info.get('system_prompt'):
             span_data['system_prompt'] = run_info['system_prompt']
+            
+            # Generate prompt hash
+            import hashlib
+            span_data['prompt_hash'] = hashlib.sha256(
+                run_info['system_prompt'].encode('utf-8')
+            ).hexdigest()
+            
+            # Extract prompt name/version from metadata if available
+            metadata = run_info.get('metadata', {})
+            if metadata.get('prompt_name'):
+                span_data['prompt_name'] = metadata['prompt_name']
+            if metadata.get('prompt_version'):
+                span_data['prompt_version'] = metadata['prompt_version']
+
+        # Add model provider if stored
+        if run_info.get('llm_model_provider'):
+            span_data['llm_model_provider'] = run_info['llm_model_provider']
+        
+        # Add model parameters if stored
+        if run_info.get('llm_model_parameters'):
+            span_data['llm_model_parameters'] = run_info['llm_model_parameters']
 
         # Add token counts to span data
         if 'input_tokens' in llm_metadata:
@@ -432,6 +674,28 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             span_data['output_tokens'] = llm_metadata['output_tokens']
         if 'total_tokens' in llm_metadata:
             span_data['total_tokens'] = llm_metadata['total_tokens']
+
+        # Calculate cost if we have tokens and model info
+        input_tokens = llm_metadata.get('input_tokens', 0)
+        output_tokens = llm_metadata.get('output_tokens', 0)
+        if (input_tokens > 0 or output_tokens > 0):
+            try:
+                from .cost_calculator import calculate_cost
+                model_name = run_info['name']
+                model_provider = run_info.get('llm_model_provider', 'unknown')
+                
+                cost = calculate_cost(
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    model_name=model_name,
+                    provider=model_provider
+                )
+                span_data['cost'] = cost
+            except Exception as e:
+                logger.debug(f"Failed to calculate cost: {e}")
+                span_data['cost'] = 0.0
+        else:
+            span_data['cost'] = 0.0
 
         self._emit_span(span_data)
         del self._runs[run_id]
