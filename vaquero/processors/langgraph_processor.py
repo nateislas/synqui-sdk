@@ -198,24 +198,98 @@ class LangGraphProcessor(FrameworkProcessor):
 
         # Aggregate metrics from components
         total_tokens = sum(c.get('total_tokens', 0) for c in node_components)
-        total_cost = sum(c.get('total_cost', 0) for c in node_components)
+        input_tokens = sum(c.get('input_tokens', 0) for c in node_components)
+        output_tokens = sum(c.get('output_tokens', 0) for c in node_components)
+        total_cost = sum(c.get('cost', 0.0) for c in node_components)
+        
+        # Calculate duration from component spans (or use node span if available)
+        component_start = self._get_earliest_start_time(component_spans)
+        component_end = self._get_latest_end_time(component_spans)
+        node_start = node_span.get('start_time') or component_start
+        node_end = node_span.get('end_time') or component_end
+        
+        # Calculate duration_ms
+        duration_ms = 0
+        if node_start and node_end:
+            try:
+                start_dt = datetime.fromisoformat(node_start.replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(node_end.replace('Z', '+00:00'))
+                duration_ms = int((end_dt - start_dt).total_seconds() * 1000)
+            except (ValueError, AttributeError):
+                # Fallback: calculate from components
+                if component_start and component_end:
+                    try:
+                        start_dt = datetime.fromisoformat(component_start.replace('Z', '+00:00'))
+                        end_dt = datetime.fromisoformat(component_end.replace('Z', '+00:00'))
+                        duration_ms = int((end_dt - start_dt).total_seconds() * 1000)
+                    except (ValueError, AttributeError):
+                        pass
+        
+        # Extract system prompt from first LLM component
+        llm_components = [c for c in node_components if c.get('component_type') == 'llm']
+        system_prompt = None
+        for llm_comp in llm_components:
+            if llm_comp.get('system_prompt'):
+                system_prompt = llm_comp.get('system_prompt')
+                break
+        
+        # Extract model information from LLM components
+        llm_model_name = None
+        llm_model_provider = None
+        llm_model_parameters = None
+        for llm_comp in llm_components:
+            if llm_comp.get('llm_model_name') and not llm_model_name:
+                llm_model_name = llm_comp.get('llm_model_name')
+            if llm_comp.get('llm_model_provider') and not llm_model_provider:
+                llm_model_provider = llm_comp.get('llm_model_provider')
+            if llm_comp.get('llm_model_parameters') and not llm_model_parameters:
+                llm_model_parameters = llm_comp.get('llm_model_parameters')
+        
+        # Aggregate input_data and output_data from components
+        # Merge all input_data and output_data from child components
+        aggregated_input_data = {}
+        aggregated_output_data = {}
+        for component in node_components:
+            if component.get('input_data'):
+                if isinstance(component['input_data'], dict):
+                    aggregated_input_data.update(component['input_data'])
+            if component.get('output_data'):
+                if isinstance(component['output_data'], dict):
+                    aggregated_output_data.update(component['output_data'])
 
         node_agent = {
             'name': node_name,
             'level': 3,
-                    'framework': 'langgraph',
-                    'component_type': 'agent',
+            'framework': 'langgraph',
+            'component_type': 'agent',
             'parent_agent_id': None,  # Will be set when added to orchestration
-            'start_time': node_span.get('start_time'),
-            'end_time': node_span.get('end_time'),
+            'start_time': node_start,
+            'end_time': node_end,
+            'duration_ms': duration_ms,
             'status': node_span.get('status', 'completed'),
-                    'total_tokens': total_tokens,
-                    'total_cost': total_cost,
-            'agents': node_components  # Components become sub-agents
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'total_tokens': total_tokens,
+            'cost': total_cost,
+            'agents': node_components,  # Components become sub-agents
+            'input_data': aggregated_input_data if aggregated_input_data else None,
+            'output_data': aggregated_output_data if aggregated_output_data else None
         }
+        
+        # Add system prompt if found
+        if system_prompt:
+            node_agent['system_prompt'] = system_prompt
+        
+        # Add model information if found
+        if llm_model_name:
+            node_agent['llm_model_name'] = llm_model_name
+        if llm_model_provider:
+            node_agent['llm_model_provider'] = llm_model_provider
+        if llm_model_parameters:
+            node_agent['llm_model_parameters'] = llm_model_parameters
 
-        # Extract model info from LLM components
-        model_info = self._extract_model_info([c for c in node_components if c.get('component_type') == 'llm'])
+        # Extract model info from LLM components (for backward compatibility)
+        model_info = self._extract_model_info(llm_components)
         if model_info:
             node_agent['model_info'] = model_info
 
