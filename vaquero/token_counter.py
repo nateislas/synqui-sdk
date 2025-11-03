@@ -4,7 +4,6 @@ This module provides automatic token counting for various LLM providers
 and text inputs, enabling accurate cost estimation and performance monitoring.
 """
 
-import logging
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 
@@ -14,9 +13,6 @@ try:
 except ImportError:
     TIKTOKEN_AVAILABLE = False
     tiktoken = None
-
-logger = logging.getLogger(__name__)
-
 
 @dataclass
 class TokenCount:
@@ -71,7 +67,6 @@ class TokenCounter:
     def _get_encoder(self, model: str) -> Any:
         """Get or create encoder for a model."""
         if not TIKTOKEN_AVAILABLE:
-            logger.warning("tiktoken not available, using fallback token counting")
             return None
         
         # Map model to tiktoken model name
@@ -82,7 +77,6 @@ class TokenCounter:
                 self._encoders[tiktoken_model] = tiktoken.encoding_for_model(tiktoken_model)
             except KeyError:
                 # Fallback to cl100k_base encoding (used by GPT-4 and GPT-3.5-turbo)
-                logger.warning(f"Unknown model {model}, using cl100k_base encoding")
                 self._encoders[tiktoken_model] = tiktoken.get_encoding("cl100k_base")
         
         return self._encoders[tiktoken_model]
@@ -104,8 +98,8 @@ class TokenCounter:
         if encoder:
             try:
                 return len(encoder.encode(text))
-            except Exception as e:
-                logger.warning(f"Token counting failed: {e}")
+            except Exception:
+                pass
         
         # Fallback: rough estimation (4 characters per token)
         return len(text) // 4
@@ -264,7 +258,6 @@ class TokenCounter:
                 )
         
         # Fallback: no token information available
-        logger.warning("Could not extract token information from response")
         return TokenCount()
 
 

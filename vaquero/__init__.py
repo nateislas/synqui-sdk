@@ -19,8 +19,7 @@ Advanced Usage (Legacy):
     vaquero.configure(
         api_key="your-api-key",
         project_id="your-project-id",
-        capture_inputs=True,
-        debug=True
+        capture_inputs=True
     )
 
 Manual Tracing:

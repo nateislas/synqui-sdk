@@ -25,18 +25,8 @@ class SDKConfig:
         flush_interval: Interval in seconds to flush pending events
         max_retries: Maximum number of retry attempts for failed requests
         timeout: Request timeout in seconds
-        capture_inputs: Whether to capture function inputs
-        capture_outputs: Whether to capture function outputs
-        capture_errors: Whether to capture error information
-        environment: Environment name (development, staging, production)
-        debug: Enable debug logging
-        enabled: Whether the SDK is enabled
+        environment: Environment name - "development", "staging", or "production" (controls batch_size and flush_interval presets)
         tags: Global tags to add to all traces
-        auto_instrument_llm: Whether to automatically instrument LLM libraries
-        capture_system_prompts: Whether to automatically capture system prompts
-        detect_agent_frameworks: Whether to auto-detect agent frameworks
-        capture_code: Whether to capture source code and docstrings for analysis
-        mode: Operating mode ("development" or "production")
     """
 
     api_key: str
@@ -46,25 +36,14 @@ class SDKConfig:
     flush_interval: float = 5.0
     max_retries: int = 3
     timeout: float = 30.0
-    capture_inputs: bool = True
-    capture_outputs: bool = True
-    capture_errors: bool = True
-    capture_tokens: bool = True
     environment: str = "development"
-    debug: bool = False
-    enabled: bool = True
     tags: Dict[str, str] = field(default_factory=dict)
-    auto_instrument_llm: bool = True
-    capture_system_prompts: bool = True
-    detect_agent_frameworks: bool = True
-    capture_code: bool = True
-    mode: str = "development"
 
     def __post_init__(self):
         """Validate configuration after initialization."""
-        if not self.api_key and self.enabled:
-            raise ValueError("api_key is required when SDK is enabled")
-        if not self.project_id and self.enabled:
+        if not self.api_key:
+            raise ValueError("api_key is required")
+        if not self.project_id:
             # Defer strict requirement; SDK may auto-provision
             pass
         if self.batch_size <= 0:
@@ -75,8 +54,8 @@ class SDKConfig:
             raise ValueError("max_retries cannot be negative")
         if self.timeout <= 0:
             raise ValueError("timeout must be positive")
-        if self.mode not in MODE_PRESETS:
-            raise ValueError(f"mode must be one of: {list(MODE_PRESETS.keys())}")
+        if self.environment not in ENVIRONMENT_PRESETS:
+            raise ValueError(f"environment must be one of: {list(ENVIRONMENT_PRESETS.keys())}")
 
 
 def configure_from_env() -> SDKConfig:
@@ -90,13 +69,7 @@ def configure_from_env() -> SDKConfig:
         VAQUERO_FLUSH_INTERVAL: Flush interval in seconds
         VAQUERO_MAX_RETRIES: Maximum retry attempts
         VAQUERO_TIMEOUT: Request timeout in seconds
-        VAQUERO_CAPTURE_INPUTS: Capture function inputs (true/false)
-        VAQUERO_CAPTURE_OUTPUTS: Capture function outputs (true/false)
-        VAQUERO_CAPTURE_ERRORS: Capture error information (true/false)
-        VAQUERO_CAPTURE_TOKENS: Capture token counts (true/false)
         VAQUERO_ENVIRONMENT: Environment name
-        VAQUERO_DEBUG: Enable debug logging (true/false)
-        VAQUERO_ENABLED: Enable SDK (true/false)
         VAQUERO_TAGS: Global tags as JSON string
 
     Returns:
@@ -138,19 +111,8 @@ def configure_from_env() -> SDKConfig:
         flush_interval=float(os.getenv("VAQUERO_FLUSH_INTERVAL", "5.0")),
         max_retries=int(os.getenv("VAQUERO_MAX_RETRIES", "3")),
         timeout=float(os.getenv("VAQUERO_TIMEOUT", "30.0")),
-        capture_inputs=str_to_bool(os.getenv("VAQUERO_CAPTURE_INPUTS", "true")),
-        capture_outputs=str_to_bool(os.getenv("VAQUERO_CAPTURE_OUTPUTS", "true")),
-        capture_errors=str_to_bool(os.getenv("VAQUERO_CAPTURE_ERRORS", "true")),
-        capture_tokens=str_to_bool(os.getenv("VAQUERO_CAPTURE_TOKENS", "true")),
-        environment=os.getenv("VAQUERO_ENVIRONMENT", "development"),
-        debug=str_to_bool(os.getenv("VAQUERO_DEBUG", "false")),
-        enabled=str_to_bool(os.getenv("VAQUERO_ENABLED", "true")),
-        tags=parse_tags(os.getenv("VAQUERO_TAGS", "{}")),
-        auto_instrument_llm=str_to_bool(os.getenv("VAQUERO_AUTO_INSTRUMENT_LLM", "true")),
-        capture_system_prompts=str_to_bool(os.getenv("VAQUERO_CAPTURE_SYSTEM_PROMPTS", "true")),
-        detect_agent_frameworks=str_to_bool(os.getenv("VAQUERO_DETECT_AGENT_FRAMEWORKS", "true")),
-        capture_code=str_to_bool(os.getenv("VAQUERO_CAPTURE_CODE", "true")),
-        mode=os.getenv("VAQUERO_MODE", "development")
+        environment=os.getenv("VAQUERO_ENVIRONMENT", os.getenv("VAQUERO_MODE", "development")),
+        tags=parse_tags(os.getenv("VAQUERO_TAGS", "{}"))
     )
 
 
@@ -162,19 +124,8 @@ def configure(
     flush_interval: Optional[float] = None,
     max_retries: Optional[int] = None,
     timeout: Optional[float] = None,
-    capture_inputs: Optional[bool] = None,
-    capture_outputs: Optional[bool] = None,
-    capture_errors: Optional[bool] = None,
-    capture_tokens: Optional[bool] = None,
     environment: Optional[str] = None,
-    debug: Optional[bool] = None,
-    enabled: Optional[bool] = None,
     tags: Optional[Dict[str, str]] = None,
-    auto_instrument_llm: Optional[bool] = None,
-    capture_system_prompts: Optional[bool] = None,
-    detect_agent_frameworks: Optional[bool] = None,
-    capture_code: Optional[bool] = None,
-    mode: Optional[str] = None,
     **kwargs
 ) -> "VaqueroSDK":
     """Configure the Vaquero SDK.
@@ -191,15 +142,8 @@ def configure(
         flush_interval: Interval in seconds to flush pending events
         max_retries: Maximum number of retry attempts
         timeout: Request timeout in seconds
-        capture_inputs: Whether to capture function inputs
-        capture_outputs: Whether to capture function outputs
-        capture_errors: Whether to capture error information
-        capture_tokens: Whether to capture token counts
         environment: Environment name
-        debug: Enable debug logging
-        enabled: Whether the SDK is enabled
         tags: Global tags to add to all traces
-        capture_code: Whether to capture source code and docstrings for analysis
         **kwargs: Additional configuration options
 
     Returns:
@@ -224,36 +168,14 @@ def configure(
         config.max_retries = max_retries
     if timeout is not None:
         config.timeout = timeout
-    if capture_inputs is not None:
-        config.capture_inputs = capture_inputs
-    if capture_outputs is not None:
-        config.capture_outputs = capture_outputs
-    if capture_errors is not None:
-        config.capture_errors = capture_errors
-    if capture_tokens is not None:
-        config.capture_tokens = capture_tokens
     if environment is not None:
         config.environment = environment
-    if debug is not None:
-        config.debug = debug
-    if enabled is not None:
-        config.enabled = enabled
     if tags is not None:
         config.tags.update(tags)
-    if auto_instrument_llm is not None:
-        config.auto_instrument_llm = auto_instrument_llm
-    if capture_system_prompts is not None:
-        config.capture_system_prompts = capture_system_prompts
-    if detect_agent_frameworks is not None:
-        config.detect_agent_frameworks = detect_agent_frameworks
-    if capture_code is not None:
-        config.capture_code = capture_code
-    if mode is not None:
-        config.mode = mode
 
-    # Auto-provision project if enabled and missing
+    # Auto-provision project if missing
     auto_provision = os.getenv("VAQUERO_AUTO_PROVISION_PROJECT", "true").lower() == "true"
-    if auto_provision and config.enabled and config.api_key and not config.project_id:
+    if auto_provision and config.api_key and not config.project_id:
         resolved = _resolve_or_create_project(config.endpoint, config.api_key)
         if resolved:
             config.project_id = resolved
@@ -270,29 +192,17 @@ def configure(
     return sdk
 
 
-# Mode presets for simplified configuration
-MODE_PRESETS = {
+# Environment presets for simplified configuration
+ENVIRONMENT_PRESETS = {
     "development": {
-        "capture_inputs": True,
-        "capture_outputs": True,
-        "capture_errors": True,
-        "capture_code": True,
-        "capture_tokens": True,
-        "auto_instrument_llm": True,
-        "capture_system_prompts": True,
-        "detect_agent_frameworks": True,
         "batch_size": 10,
         "flush_interval": 2.0,
     },
+    "staging": {
+        "batch_size": 50,
+        "flush_interval": 3.0,
+    },
     "production": {
-        "capture_inputs": False,
-        "capture_outputs": False,
-        "capture_errors": True,
-        "capture_code": False,
-        "capture_tokens": True,
-        "auto_instrument_llm": False,
-        "capture_system_prompts": False,
-        "detect_agent_frameworks": False,
         "batch_size": 100,
         "flush_interval": 5.0,
     }
@@ -304,20 +214,20 @@ def init(
     project_id: Optional[str] = None,
     project_name: Optional[str] = None,
     endpoint: Optional[str] = None,
-    mode: str = "development",
+    environment: str = "development",
     **overrides
 ) -> "VaqueroSDK":
     """Initialize the Vaquero SDK with simplified configuration.
 
     This is the recommended way to initialize the SDK. It applies sensible
-    presets based on the specified mode and allows for targeted overrides.
+    presets based on the specified environment and allows for targeted overrides.
 
     Args:
         project_api_key: Project API key for authentication with Vaquero
         project_id: Project ID to associate traces with (optional)
         project_name: Project name to associate traces with (optional, takes precedence over project_id)
         endpoint: Vaquero API endpoint URL (optional)
-        mode: Operating mode - "development" (default) or "production"
+        environment: Environment name - "development" (default), "staging", or "production"
         **overrides: Additional configuration overrides
 
     Returns:
@@ -331,25 +241,24 @@ def init(
         vaquero.init(project_api_key="your-key", project_name="my-awesome-project")
 
         # Production setup
-        vaquero.init(project_api_key="your-key", mode="production")
+        vaquero.init(project_api_key="your-key", environment="production")
 
         # Custom configuration
         vaquero.init(
             project_api_key="your-key",
             project_name="my-project",
-            capture_inputs=True,
             batch_size=50
         )
     """
-    # Validate mode
-    if mode not in MODE_PRESETS:
-        raise ValueError(f"Unknown mode '{mode}'. Must be one of: {list(MODE_PRESETS.keys())}")
+    # Validate environment
+    if environment not in ENVIRONMENT_PRESETS:
+        raise ValueError(f"Unknown environment '{environment}'. Must be one of: {list(ENVIRONMENT_PRESETS.keys())}")
 
     # Start with environment configuration for defaults
     config = configure_from_env()
 
-    # Apply mode preset
-    preset = MODE_PRESETS[mode].copy()
+    # Apply environment preset
+    preset = ENVIRONMENT_PRESETS[environment].copy()
     for key, value in preset.items():
         if hasattr(config, key):
             setattr(config, key, value)
@@ -359,8 +268,8 @@ def init(
         config.api_key = project_api_key
     if endpoint is not None:
         config.endpoint = endpoint
-    # Set mode after applying preset to ensure it takes precedence
-    config.mode = mode
+    # Set environment after applying preset to ensure it takes precedence
+    config.environment = environment
     
     # Handle project identification (project_name takes precedence over project_id)
     if project_name is not None:
@@ -380,9 +289,9 @@ def init(
         else:
             raise ValueError(f"Unknown configuration option: {key}")
 
-    # Auto-provision project if enabled and missing
+    # Auto-provision project if missing
     auto_provision = os.getenv("VAQUERO_AUTO_PROVISION_PROJECT", "true").lower() == "true"
-    if auto_provision and config.enabled and config.api_key and not config.project_id:
+    if auto_provision and config.api_key and not config.project_id:
         resolved = _resolve_or_create_project(config.endpoint, config.api_key)
         if resolved:
             config.project_id = resolved

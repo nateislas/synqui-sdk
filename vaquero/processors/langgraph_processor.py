@@ -1,12 +1,9 @@
 """LangGraph-specific processor for hierarchical trace collection."""
 
-import logging
 import uuid
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from .base_processor import FrameworkProcessor, HierarchicalTrace
-
-logger = logging.getLogger(__name__)
 
 class LangGraphProcessor(FrameworkProcessor):
     """LangGraph processor that builds hierarchical traces from normalized spans."""
@@ -17,18 +14,9 @@ class LangGraphProcessor(FrameworkProcessor):
     def add_span(self, span_data: Dict[str, Any]) -> None:
         """Add normalized LangGraph span to processor."""
         self.spans.append(span_data)
-        logger.debug(f"Added LangGraph span: {span_data.get('component_type')} {span_data.get('name')}")
     
     def process_trace(self, trace_id: str) -> HierarchicalTrace:
         """Process normalized spans into hierarchical format matching CHAT_SESSION_TRACE_HIERARCHY."""
-        logger.info(f"Processing LangGraph trace {trace_id} with {len(self.spans)} spans")
-
-        # Log all spans received
-        logger.info(f"📊 PROCESSOR: All spans received:")
-        for i, span in enumerate(self.spans):
-            logger.info(f"📊 PROCESSOR: Span {i}: component_type={span.get('component_type')}, "
-                       f"name={span.get('name')}, span_id={span.get('span_id')}, "
-                       f"message_sequence={span.get('message_sequence')}")
 
         # Group spans by type
         graph_spans = [s for s in self.spans if s.get('component_type') == 'graph']
@@ -36,9 +24,6 @@ class LangGraphProcessor(FrameworkProcessor):
         llm_spans = [s for s in self.spans if s.get('component_type') == 'llm']
         tool_spans = [s for s in self.spans if s.get('component_type') == 'tool']
         chain_spans = [s for s in self.spans if s.get('component_type') == 'chain']
-        
-        logger.info(f"📊 PROCESSOR: Grouped spans - graph={len(graph_spans)}, node={len(node_spans)}, "
-                   f"llm={len(llm_spans)}, tool={len(tool_spans)}, chain={len(chain_spans)}")
 
         # Extract session info
         chat_session_id = None
@@ -68,14 +53,12 @@ class LangGraphProcessor(FrameworkProcessor):
         for span in graph_spans:
             if span.get('metadata', {}).get('graph_architecture'):
                 graph_architecture = span['metadata']['graph_architecture']
-                logger.info(f"📊 PROCESSOR: Found graph architecture in graph span: {len(graph_architecture.get('nodes', []))} nodes")
                 break
         # Fallback: check any span if no graph spans exist
         if not graph_architecture:
             for span in self.spans:
                 if span.get('metadata', {}).get('graph_architecture'):
                     graph_architecture = span['metadata']['graph_architecture']
-                    logger.info(f"📊 PROCESSOR: Found graph architecture in span metadata (fallback): {len(graph_architecture.get('nodes', []))} nodes")
                     break
         
         metadata = {
@@ -101,7 +84,6 @@ class LangGraphProcessor(FrameworkProcessor):
             metadata=metadata
         )
 
-        logger.info(f"Built hierarchical trace with {len(agents)} top-level agents")
         return hierarchical_trace
 
     def _build_session_hierarchy(self, trace_id: str, chat_session_id: str, graph_spans: List[Dict],
@@ -127,20 +109,16 @@ class LangGraphProcessor(FrameworkProcessor):
             }
             
         # Group nodes by message sequence for orchestrations (Level 2)
-        logger.info(f"📊 PROCESSOR: Grouping {len(node_spans)} node spans by message_sequence")
         nodes_by_sequence = {}
         for span in node_spans:
             seq = span.get('message_sequence', 0)
-            logger.info(f"📊 PROCESSOR: Node span - name={span.get('name')}, message_sequence={seq}")
             if seq not in nodes_by_sequence:
                 nodes_by_sequence[seq] = []
             nodes_by_sequence[seq].append(span)
 
-        logger.info(f"📊 PROCESSOR: Created {len(nodes_by_sequence)} message sequence groups: {list(nodes_by_sequence.keys())}")
 
         # Create orchestration agents (Level 2)
         for seq, node_list in nodes_by_sequence.items():
-            logger.info(f"📊 PROCESSOR: Creating orchestration for sequence {seq} with {len(node_list)} nodes")
             orchestration_agent = self._build_orchestration_agent(seq, node_list, llm_spans, tool_spans, chain_spans)
             # Ensure proper parent linkage in flattened output
             orchestration_agent['parent_agent_id'] = session_agent['name']

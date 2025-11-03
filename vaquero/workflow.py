@@ -201,7 +201,6 @@ class Workflow:
             workflow_span.set_attribute("workflow_name", self.name)
             workflow_span.set_attribute("total_steps", len(self.steps))
             workflow_span.set_attribute("input_type", type(input_data).__name__)
-            print(f"    🔍 Created workflow span: {workflow_span.span_id}")
             
             # Set the workflow span as the current span context
             from .context import span_context
@@ -212,7 +211,6 @@ class Workflow:
                     
                     workflow_span.set_attribute("status", "completed")
                     workflow_span.set_attribute("results_count", len(self.results))
-                    print(f"    🔍 Workflow span completed: {workflow_span.span_id}")
                     
                     return {
                         "workflow_id": workflow_span.trace_id,
@@ -293,7 +291,6 @@ class Workflow:
             step_span.set_attribute("step_type", step.step_type.value)
             if step.description:
                 step_span.set_attribute("description", step.description)
-            print(f"      🔍 Created step span: {step_span.span_id} for {step_name}")
 
             try:
                 # Set input data on the span
@@ -312,10 +309,10 @@ class Workflow:
                 # Set output data on the span
                 step_span.outputs = {"result": result}
                 
-                # Apply token counting to both input data and result
+                # Apply token counting to both input data and result (always enabled)
                 from .sdk import get_current_sdk
                 sdk = get_current_sdk()
-                if sdk and sdk.config.capture_tokens:
+                if sdk:
                     try:
                         from .token_counter import count_tokens, extract_tokens_from_llm_response
                         
@@ -356,12 +353,8 @@ class Workflow:
                         step_span.cost = cost
                         step_span.model_name = model_name
                         step_span.model_provider = provider
-                        
-                        if total_tokens > 0:
-                            print(f"      🔍 Token count: {total_tokens} tokens (input: {input_tokens}, output: {output_tokens})")
-                        
-                    except Exception as e:
-                        print(f"      ⚠️ Token counting failed: {e}")
+                    except Exception:
+                        pass
                 
                 step.result = result
                 step.executed = True
@@ -369,7 +362,6 @@ class Workflow:
                 
                 step_span.set_attribute("status", "completed")
                 step_span.set_attribute("result_type", type(result).__name__)
-                print(f"      🔍 Step span completed: {step_span.span_id}")
                 
             except Exception as e:
                 step.error = e

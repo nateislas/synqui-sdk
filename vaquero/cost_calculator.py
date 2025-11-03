@@ -3,10 +3,7 @@
 This module provides cost calculation based on token usage and model pricing.
 """
 
-import logging
 from typing import Dict, Optional
-
-logger = logging.getLogger(__name__)
 
 # Pricing data (per 1K tokens) - updated as of October 2025
 # NOTE: Pricing is subject to change. Verify with official sources before production use.
@@ -76,11 +73,9 @@ def calculate_cost(
     # Log pricing source for transparency
     if normalized_model in PRICING_DATA:
         unit = PRICING_DATA[normalized_model].get("unit", "per 1k tokens")
-        logger.debug(f"Using pricing for {normalized_model}: {unit}")
     
     # Handle deprecated models
     if pricing["input"] == "deprecated" or pricing["output"] == "deprecated":
-        logger.warning(f"Model {normalized_model} is deprecated. Using default pricing.")
         pricing = PRICING_DATA["default"]
     
     # Calculate cost based on unit
@@ -97,11 +92,6 @@ def calculate_cost(
         unit_display = "1K"
     
     total_cost = input_cost + output_cost
-    
-    logger.debug(f"Cost calculation for {normalized_model}: "
-                f"{input_tokens} input tokens @ ${pricing['input']}/{unit_display} = ${input_cost:.6f}, "
-                f"{output_tokens} output tokens @ ${pricing['output']}/{unit_display} = ${output_cost:.6f}, "
-                f"total = ${total_cost:.6f}")
     
     return round(total_cost, 6)
 

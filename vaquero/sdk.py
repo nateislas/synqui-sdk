@@ -2,7 +2,6 @@
 
 import asyncio
 import functools
-import logging
 import signal
 import time
 import atexit
@@ -20,8 +19,6 @@ from .token_counter import count_function_tokens, extract_tokens_from_llm_respon
 from .auto_instrumentation import AutoInstrumentationEngine
 from .analytics import initialize_analytics, get_analytics
 from .chat_session import ChatSession, create_chat_session
-
-logger = logging.getLogger(__name__)
 
 
 class VaqueroSDK:
@@ -48,72 +45,55 @@ class VaqueroSDK:
         self.config = config
         self._event_queue: Queue = Queue()
         self._trace_collector: Optional[UnifiedTraceCollector] = None
-        self._enabled = config.enabled
         self._auto_instrumentation: Optional[AutoInstrumentationEngine] = None
         self._first_trace_tracked = False
-
-        # Set up logging
-        if config.debug:
-            logging.basicConfig(level=logging.DEBUG)
-            logger.setLevel(logging.DEBUG)
 
         # Initialize analytics (framework detection, SDK version reporting)
         self._analytics = initialize_analytics(
             api_key=config.api_key,
             project_id=config.project_id,
-            enabled=config.enabled,
+            enabled=True,
         )
 
-        # Start trace collector if enabled
-        if self._enabled:
-            self._start_trace_collector()
-
-            # Initialize auto-instrumentation if enabled
-            if config.auto_instrument_llm:
-                self._start_auto_instrumentation()
+        # Start trace collector and auto-instrumentation
+        self._start_trace_collector()
+        self._start_auto_instrumentation()
 
         # Register automatic shutdown to ensure traces are flushed on program exit
-        if self._enabled:
-            atexit.register(self.shutdown)
+        atexit.register(self.shutdown)
+        
+        # Register signal handler for graceful shutdown on Ctrl+C
+        # Only register signal handlers if we're in the main thread
+        try:
+            def signal_handler(signum, frame):
+                self.shutdown()
+                exit(0)
             
-            # Register signal handler for graceful shutdown on Ctrl+C
-            # Only register signal handlers if we're in the main thread
-            try:
-                def signal_handler(signum, frame):
-                    logger.info(f"Received signal {signum}, shutting down gracefully...")
-                    self.shutdown()
-                    exit(0)
-                
-                signal.signal(signal.SIGINT, signal_handler)
-                signal.signal(signal.SIGTERM, signal_handler)
-            except ValueError as e:
-                # Signal handlers can only be registered from the main thread
-                logger.debug(f"Could not register signal handlers (not in main thread): {e}")
-                # This is expected in some environments like Streamlit, Jupyter, etc.
-
-        logger.info(f"Vaquero SDK initialized (enabled={self._enabled})")
+            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
+        except ValueError:
+            # Signal handlers can only be registered from the main thread
+            # This is expected in some environments like Streamlit, Jupyter, etc.
+            pass
 
     def _start_trace_collector(self):
         """Start the unified trace collector."""
         if self._trace_collector is None:
             self._trace_collector = UnifiedTraceCollector(self)
-            logger.debug("Unified trace collector started")
     
     def _start_auto_instrumentation(self):
         """Start automatic LLM instrumentation."""
         if self._auto_instrumentation is None:
             self._auto_instrumentation = AutoInstrumentationEngine(self)
             self._auto_instrumentation.instrument_all()
-            logger.debug("Auto-instrumentation started")
     
     def _stop_auto_instrumentation(self):
         """Stop automatic LLM instrumentation."""
         if self._auto_instrumentation:
             self._auto_instrumentation.restore_original_methods()
             self._auto_instrumentation = None
-            logger.debug("Auto-instrumentation stopped")
 
-    def trace(self, agent_name: str, capture_code: bool = True, **kwargs) -> Callable:
+    def trace(self, agent_name: str, **kwargs) -> Callable:
         """Decorator for tracing function calls.
 
         This decorator can be used on both synchronous and asynchronous functions.
@@ -121,14 +101,13 @@ class VaqueroSDK:
 
         Args:
             agent_name: Name of the agent/component being traced
-            capture_code: Whether to capture source code and docstring for analysis
             **kwargs: Additional options (tags, metadata, etc.)
 
         Returns:
             Decorated function
 
         Example:
-            @sdk.trace("data_processor", capture_code=True)
+            @sdk.trace("data_processor")
             def process_data(data):
                 \"\"\"
                 Process data with expected performance of 1-5 seconds.
@@ -141,73 +120,29 @@ class VaqueroSDK:
                     response = await client.get(url)
                     return response.json()
         """
-        logger.info(f"SDK: === CREATING TRACE DECORATOR ===")
-        logger.info(f"SDK: Agent name: {agent_name}")
-        logger.info(f"SDK: Capture code: {capture_code}")
-        logger.info(f"SDK: Additional kwargs: {kwargs}")
-
         def decorator(func: Callable) -> Callable:
-            logger.info(f"SDK: === APPLYING DECORATOR TO FUNCTION ===")
-            logger.info(f"SDK: Function name: {func.__name__}")
-            logger.info(f"SDK: Function module: {func.__module__}")
-            logger.info(f"SDK: Function qualname: {func.__qualname__}")
-            logger.info(f"SDK: Is coroutine function: {asyncio.iscoroutinefunction(func)}")
-
-            if not self._enabled:
-                logger.warning(f"SDK: SDK is disabled, returning original function {func.__name__}")
-                return func
-
-            # Capture code context if enabled
-            logger.info(f"SDK: Capture code enabled: {capture_code}")
-            code_context = {}
-            if capture_code:
-                logger.info(f"SDK: Calling _capture_code_context for {func.__name__}")
-                code_context = self._capture_code_context(func)
-                logger.info(f"SDK: Code context captured: {len(code_context)} keys")
-            else:
-                logger.warning(f"SDK: Capture code disabled for {func.__name__}")
+            # Capture code context (always enabled)
+            code_context = self._capture_code_context(func)
 
             if asyncio.iscoroutinefunction(func):
-                logger.info(f"SDK: Creating async trace decorator for {func.__name__}")
                 return self._async_trace_decorator(func, agent_name, code_context, **kwargs)
             else:
-                logger.info(f"SDK: Creating sync trace decorator for {func.__name__}")
                 return self._sync_trace_decorator(func, agent_name, code_context, **kwargs)
 
         return decorator
 
     def _capture_code_context(self, func: Callable) -> Dict[str, Any]:
         """Capture code context for analysis."""
-        logger.info(f"SDK: === CAPTURING CODE CONTEXT FOR {func.__name__} ===")
-        logger.info(f"SDK: Function object: {func}")
-        logger.info(f"SDK: Function name: {func.__name__}")
-        logger.info(f"SDK: Function qualname: {func.__qualname__}")
-        logger.info(f"SDK: Function module: {func.__module__}")
-
         try:
             import inspect
 
-            logger.info(f"SDK: Starting inspect.getsource() for {func.__name__}")
-            # Extract source code
             source_code = inspect.getsource(func)
-            logger.info(f"SDK: Successfully extracted source code for {func.__name__} (length: {len(source_code)})")
-            logger.debug(f"SDK: source_code preview: {source_code[:200]}...")
-
-            # Extract docstring
             docstring = func.__doc__
-            docstring_length = len(docstring) if docstring else 0
-            logger.info(f"SDK: Extracted docstring for {func.__name__} (length: {docstring_length})")
-            logger.debug(f"SDK: docstring: {docstring or 'None'}")
-
-            # Extract function signature
             signature = str(inspect.signature(func))
-            logger.info(f"SDK: Extracted function signature: {signature}")
 
-            # Extract module and file info
             module = inspect.getmodule(func)
             module_name = module.__name__ if module else None
             file_path = module.__file__ if module else None
-            logger.info(f"SDK: Module info - name: {module_name}, file: {file_path}")
 
             code_context = {
                 'source_code': source_code,
@@ -218,15 +153,8 @@ class VaqueroSDK:
                 'function_name': func.__name__
             }
 
-            logger.info(f"SDK: Successfully captured complete code context for {func.__name__}")
-            logger.debug(f"SDK: Code context keys: {list(code_context.keys())}")
-
             return code_context
-        except Exception as e:
-            logger.error(f"SDK: FAILED to capture code context for {func.__name__}: {e}", exc_info=True)
-            logger.error(f"SDK: Exception type: {type(e).__name__}")
-            logger.error(f"SDK: Exception args: {e.args}")
-            logger.warning(f"SDK: Returning empty code context for {func.__name__}")
+        except Exception:
             return {}
 
     def _sync_trace_decorator(self, func: Callable, agent_name: str, code_context: Dict[str, Any], **kwargs) -> Callable:
@@ -234,9 +162,6 @@ class VaqueroSDK:
 
         @functools.wraps(func)
         def wrapper(*args, **func_kwargs):
-            if not self._enabled:
-                return func(*args, **func_kwargs)
-
             # Create trace data
             trace_data = create_child_span(
                 agent_name=agent_name,
@@ -251,17 +176,10 @@ class VaqueroSDK:
 
             # Add code context to metadata
             if code_context:
-                logger.info(f"SDK: === ATTACHING CODE CONTEXT TO TRACE '{agent_name}' ===")
-                logger.info(f"SDK: Function: {func.__name__}")
-                logger.info(f"SDK: Source code length: {len(code_context.get('source_code', ''))}")
-                logger.info(f"SDK: Docstring length: {len(code_context.get('docstring') or '')}")
-                logger.info(f"SDK: File path: {code_context.get('file_path')}")
 
                 source_code = code_context.get('source_code', '')
                 docstring = code_context.get('docstring', '')
 
-                logger.debug(f"SDK: Attaching source code (first 100 chars): {source_code[:100]}...")
-                logger.debug(f"SDK: Attaching docstring: {docstring or 'None'}")
 
                 trace_data.metadata.update({
                     'source_code': source_code,
@@ -272,10 +190,6 @@ class VaqueroSDK:
                     'function_name': code_context.get('function_name', '')
                 })
 
-                logger.info(f"SDK: Successfully attached code context to trace '{agent_name}'")
-            else:
-                logger.warning(f"SDK: NO CODE CONTEXT to attach to trace '{agent_name}' (function: {func.__name__})")
-
             # Set prompt fields if provided
             self._set_prompt_fields(trace_data, kwargs)
 
@@ -284,20 +198,17 @@ class VaqueroSDK:
 
             with span_context(trace_data):
                 try:
-                    # Capture inputs
-                    if self.config.capture_inputs:
-                        trace_data.inputs = self._capture_inputs(args, func_kwargs)
+                    # Capture inputs (always enabled)
+                    trace_data.inputs = self._capture_inputs(args, func_kwargs)
 
                     # Execute function
                     result = func(*args, **func_kwargs)
 
-                    # Capture outputs
-                    if self.config.capture_outputs:
-                        trace_data.outputs = self._capture_outputs(result)
+                    # Capture outputs (always enabled)
+                    trace_data.outputs = self._capture_outputs(result)
 
-                    # Count tokens if enabled
-                    if self.config.capture_tokens:
-                        self._count_tokens(trace_data, args, func_kwargs, result)
+                    # Count tokens (always enabled)
+                    self._count_tokens(trace_data, args, func_kwargs, result)
 
                     # Mark as completed
                     trace_data.finish(SpanStatus.COMPLETED)
@@ -305,12 +216,8 @@ class VaqueroSDK:
                     return result
 
                 except Exception as e:
-                    # Capture error
-                    if self.config.capture_errors:
-                        trace_data.set_error(e)
-                    else:
-                        trace_data.finish(SpanStatus.FAILED)
-
+                    # Capture error (always enabled)
+                    trace_data.set_error(e)
                     raise
 
                 finally:
@@ -330,9 +237,6 @@ class VaqueroSDK:
 
         @functools.wraps(func)
         async def wrapper(*args, **func_kwargs):
-            if not self._enabled:
-                return await func(*args, **func_kwargs)
-
             # Create trace data
             trace_data = create_child_span(
                 agent_name=agent_name,
@@ -347,17 +251,10 @@ class VaqueroSDK:
 
             # Add code context to metadata
             if code_context:
-                logger.info(f"SDK: === ATTACHING CODE CONTEXT TO TRACE '{agent_name}' ===")
-                logger.info(f"SDK: Function: {func.__name__}")
-                logger.info(f"SDK: Source code length: {len(code_context.get('source_code', ''))}")
-                logger.info(f"SDK: Docstring length: {len(code_context.get('docstring') or '')}")
-                logger.info(f"SDK: File path: {code_context.get('file_path')}")
 
                 source_code = code_context.get('source_code', '')
                 docstring = code_context.get('docstring', '')
 
-                logger.debug(f"SDK: Attaching source code (first 100 chars): {source_code[:100]}...")
-                logger.debug(f"SDK: Attaching docstring: {docstring or 'None'}")
 
                 trace_data.metadata.update({
                     'source_code': source_code,
@@ -368,10 +265,6 @@ class VaqueroSDK:
                     'function_name': code_context.get('function_name', '')
                 })
 
-                logger.info(f"SDK: Successfully attached code context to trace '{agent_name}'")
-            else:
-                logger.warning(f"SDK: NO CODE CONTEXT to attach to trace '{agent_name}' (function: {func.__name__})")
-
             # Set prompt fields if provided
             self._set_prompt_fields(trace_data, kwargs)
 
@@ -380,20 +273,17 @@ class VaqueroSDK:
 
             with span_context(trace_data):
                 try:
-                    # Capture inputs
-                    if self.config.capture_inputs:
-                        trace_data.inputs = self._capture_inputs(args, func_kwargs)
+                    # Capture inputs (always enabled)
+                    trace_data.inputs = self._capture_inputs(args, func_kwargs)
 
                     # Execute function
                     result = await func(*args, **func_kwargs)
 
-                    # Capture outputs
-                    if self.config.capture_outputs:
-                        trace_data.outputs = self._capture_outputs(result)
+                    # Capture outputs (always enabled)
+                    trace_data.outputs = self._capture_outputs(result)
 
-                    # Count tokens if enabled
-                    if self.config.capture_tokens:
-                        self._count_tokens(trace_data, args, func_kwargs, result)
+                    # Count tokens (always enabled)
+                    self._count_tokens(trace_data, args, func_kwargs, result)
 
                     # Mark as completed
                     trace_data.finish(SpanStatus.COMPLETED)
@@ -401,12 +291,8 @@ class VaqueroSDK:
                     return result
 
                 except Exception as e:
-                    # Capture error
-                    if self.config.capture_errors:
-                        trace_data.set_error(e)
-                    else:
-                        trace_data.finish(SpanStatus.FAILED)
-
+                    # Capture error (always enabled)
+                    trace_data.set_error(e)
                     raise
 
                 finally:
@@ -440,21 +326,12 @@ class VaqueroSDK:
                 span.set_attribute("batch_size", 100)
                 # Your code here
         """
-        logger.info(f"SDK: === SPAN CONTEXT MANAGER CALLED ===")
-        logger.info(f"SDK: Operation name: {operation_name}")
-        logger.info(f"SDK: Additional kwargs: {kwargs}")
 
         return self._span_context_manager(operation_name, **kwargs)
     
     @contextmanager
     def _span_context_manager(self, operation_name: str, **kwargs) -> Generator[TraceData, None, None]:
         """Internal context manager implementation for span."""
-        if not self._enabled:
-            # Create a dummy span that does nothing
-            dummy_span = TraceData(agent_name=operation_name)
-            yield dummy_span
-            return
-
         # Create trace data
         trace_data = create_child_span(
             agent_name=operation_name,
@@ -474,10 +351,8 @@ class VaqueroSDK:
             try:
                 yield trace_data
             except Exception as e:
-                if self.config.capture_errors:
-                    trace_data.set_error(e)
-                else:
-                    trace_data.finish(SpanStatus.FAILED)
+                # Capture error (always enabled)
+                trace_data.set_error(e)
                 raise
             finally:
                 # Finish span if not already finished
@@ -518,16 +393,14 @@ class VaqueroSDK:
             
             with span_context(trace_data):
                 try:
-                    # Capture inputs
-                    if self.config.capture_inputs:
-                        trace_data.inputs = self._capture_inputs(args, func_kwargs)
+                    # Capture inputs (always enabled)
+                    trace_data.inputs = self._capture_inputs(args, func_kwargs)
                     
                     # Execute function
                     result = func(*args, **func_kwargs)
                     
-                    # Capture outputs
-                    if self.config.capture_outputs:
-                        trace_data.outputs = self._capture_outputs(result)
+                    # Capture outputs (always enabled)
+                    trace_data.outputs = self._capture_outputs(result)
                     
                     # Mark as completed
                     trace_data.finish(SpanStatus.COMPLETED)
@@ -535,11 +408,8 @@ class VaqueroSDK:
                     return result
                 
                 except Exception as e:
-                    # Capture error
-                    if self.config.capture_errors:
-                        trace_data.set_error(e)
-                    else:
-                        trace_data.finish(SpanStatus.FAILED)
+                    # Capture error (always enabled)
+                    trace_data.set_error(e)
                     
                     raise
                 
@@ -580,16 +450,14 @@ class VaqueroSDK:
             
             with span_context(trace_data):
                 try:
-                    # Capture inputs
-                    if self.config.capture_inputs:
-                        trace_data.inputs = self._capture_inputs(args, func_kwargs)
+                    # Capture inputs (always enabled)
+                    trace_data.inputs = self._capture_inputs(args, func_kwargs)
                     
                     # Execute function
                     result = await func(*args, **func_kwargs)
                     
-                    # Capture outputs
-                    if self.config.capture_outputs:
-                        trace_data.outputs = self._capture_outputs(result)
+                    # Capture outputs (always enabled)
+                    trace_data.outputs = self._capture_outputs(result)
                     
                     # Mark as completed
                     trace_data.finish(SpanStatus.COMPLETED)
@@ -597,11 +465,8 @@ class VaqueroSDK:
                     return result
                 
                 except Exception as e:
-                    # Capture error
-                    if self.config.capture_errors:
-                        trace_data.set_error(e)
-                    else:
-                        trace_data.finish(SpanStatus.FAILED)
+                    # Capture error (always enabled)
+                    trace_data.set_error(e)
                     
                     raise
                 
@@ -627,7 +492,6 @@ class VaqueroSDK:
                 "kwargs": {k: safe_serialize(v) for k, v in kwargs.items()}
             }
         except Exception as e:
-            logger.debug(f"Failed to capture inputs: {e}")
             return {"error": "Failed to capture inputs"}
 
     def _capture_outputs(self, result: Any) -> Dict[str, Any]:
@@ -642,7 +506,6 @@ class VaqueroSDK:
         try:
             return {"result": safe_serialize(result)}
         except Exception as e:
-            logger.debug(f"Failed to capture outputs: {e}")
             return {"error": "Failed to capture outputs"}
 
     def _count_tokens(self, trace_data: TraceData, args: tuple, kwargs: dict, result: Any) -> None:
@@ -673,7 +536,6 @@ class VaqueroSDK:
             trace_data.total_tokens = token_count.total_tokens
             
         except Exception as e:
-            logger.debug(f"Failed to count tokens: {e}")
             # Set default values
             trace_data.input_tokens = 0
             trace_data.output_tokens = 0
@@ -685,42 +547,17 @@ class VaqueroSDK:
         Args:
             trace_data: TraceData instance to send
         """
-        if not self._enabled:
-            logger.debug(f"SDK: Trace sending disabled for {trace_data.agent_name}")
-            return
-
-        logger.info(f"SDK: === SENDING TRACE TO TRACE COLLECTOR ===")
-        logger.info(f"SDK: Agent name: {trace_data.agent_name}")
-        logger.info(f"SDK: Trace ID: {trace_data.trace_id}")
-        logger.info(f"SDK: Span ID: {trace_data.span_id}")
-        logger.info(f"SDK: Status: {trace_data.status}")
-        logger.info(f"SDK: Duration: {trace_data.duration_ms}ms")
-
         # Track first trace for analytics
         if not self._first_trace_tracked and self._analytics:
             self._analytics.track_first_trace(trace_data.trace_id)
             self._first_trace_tracked = True
 
         try:
-            # Add environment and mode information
+            # Add environment information
             trace_data.metadata["environment"] = self.config.environment
-            trace_data.metadata["mode"] = self.config.mode
             trace_data.metadata["sdk_version"] = "0.1.0"
 
-            # Check for source code in metadata
-            source_code = trace_data.metadata.get("source_code")
-            if source_code:
-                logger.info(f"SDK: TRACE CONTAINS SOURCE CODE (length: {len(source_code)})")
-                logger.debug(f"SDK: Source code preview: {source_code[:100]}...")
-            else:
-                logger.warning(f"SDK: TRACE DOES NOT CONTAIN SOURCE CODE")
-
-            docstring = trace_data.metadata.get("docstring")
-            if docstring:
-                logger.info(f"SDK: TRACE CONTAINS DOCSTRING (length: {len(docstring)})")
-                logger.debug(f"SDK: Docstring preview: {docstring[:100]}...")
-            else:
-                logger.info(f"SDK: TRACE DOES NOT CONTAIN DOCSTRING")
+            # Metadata is already set in trace_data
 
             # Convert TraceData to dictionary for trace collector
             span_data = trace_data.to_dict()
@@ -734,8 +571,8 @@ class VaqueroSDK:
             # 2. The LangChain callback handler (when the workflow completes)
             # 3. Manual calls to vaquero.end_trace() by the user
 
-        except Exception as e:
-            logger.error(f"SDK: FAILED to send trace data for {trace_data.agent_name}: {e}", exc_info=True)
+        except Exception:
+            pass
 
     def _set_prompt_fields(self, trace_data: TraceData, kwargs: Dict[str, Any]) -> None:
         """Populate explicit prompt fields on the trace if provided.
@@ -765,8 +602,8 @@ class VaqueroSDK:
             prompt_parameters = kwargs.get("prompt_parameters")
             if isinstance(prompt_parameters, dict):
                 trace_data.prompt_parameters = prompt_parameters
-        except Exception as e:
-            logger.debug(f"Failed to set prompt fields: {e}")
+        except Exception:
+            pass
 
     def flush(self, timeout: Optional[float] = None):
         """Manually flush pending traces.
@@ -776,7 +613,7 @@ class VaqueroSDK:
         """
         if self._trace_collector:
             # TraceCollectorV2 handles flushing automatically
-            logger.debug("Trace collector handles flushing automatically")
+            pass
 
     def shutdown(self, timeout: Optional[float] = None):
         """Shutdown the SDK and flush remaining traces.
@@ -792,24 +629,23 @@ class VaqueroSDK:
             from .langgraph import shutdown_all_langgraph_handlers
             shutdown_all_langgraph_handlers()
         except ImportError:
-            logger.debug("LangGraph not available, skipping handler shutdown")
-        except Exception as e:
-            logger.error(f"Failed to shutdown LangGraph handlers: {e}")
+            pass
+        except Exception:
+            pass
         
         # Shutdown trace collector
         if self._trace_collector:
             self._trace_collector.shutdown()
             self._trace_collector = None
             
-        logger.info("SDK shutdown completed")
 
     def is_enabled(self) -> bool:
         """Check if the SDK is enabled.
 
         Returns:
-            True if SDK is enabled, False otherwise
+            Always returns True (SDK is always enabled when initialized)
         """
-        return self._enabled
+        return True
 
     def get_queue_size(self) -> int:
         """Get the current size of the event queue.

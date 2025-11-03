@@ -1,12 +1,9 @@
 """Safe serialization utilities for the Vaquero SDK."""
 
 import json
-import logging
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Any, Dict, List, Union
-
-logger = logging.getLogger(__name__)
 
 # Maximum depth for nested object serialization
 MAX_DEPTH = 10
@@ -47,7 +44,6 @@ def safe_serialize(obj: Any, depth: int = 0) -> Any:
     # Handle strings with length limit
     if isinstance(obj, str):
         if len(obj) > MAX_STRING_LENGTH:
-            logger.warning(f"Truncating string from {len(obj)} to {MAX_STRING_LENGTH} characters")
             return obj[:MAX_STRING_LENGTH] + "..."
         return obj
 
@@ -160,7 +156,6 @@ def serialize_for_api(data: Dict[str, Any]) -> str:
         return json.dumps(safe_data, ensure_ascii=False, separators=(',', ':'))
 
     except Exception as e:
-        logger.error(f"Failed to serialize data for API: {e}")
         raise ValueError(f"Serialization failed: {e}")
 
 
@@ -183,7 +178,6 @@ def truncate_large_objects(obj: Any, max_size_bytes: int = 1024 * 1024) -> Any:
             return obj
 
         # Object is too large, truncate it
-        logger.warning(f"Object too large ({size_bytes} bytes), truncating")
 
         # If it's a collection, truncate the collection
         if isinstance(obj, (list, tuple)):
@@ -233,5 +227,4 @@ def truncate_large_objects(obj: Any, max_size_bytes: int = 1024 * 1024) -> Any:
             return f"<truncated:{type(obj).__name__}>"
 
     except Exception as e:
-        logger.error(f"Failed to truncate object: {e}")
         return f"<truncation_failed:{type(obj).__name__}>"

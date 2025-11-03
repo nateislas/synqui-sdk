@@ -4,11 +4,6 @@ import time
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 class ChatSession:
     """Manages chat session state and lifecycle for conversational AI applications."""
 
@@ -54,12 +49,10 @@ class ChatSession:
         # Callback mechanism for timeout events
         self._timeout_callbacks = []
 
-        logger.info(f"Created chat session {self.session_id} of type {self.session_type}")
 
     def update_activity(self) -> None:
         """Update the last activity timestamp."""
         self.last_activity = datetime.utcnow()
-        logger.debug(f"Updated activity for session {self.session_id}")
 
     def add_message(self, tokens: int = 0, cost: float = 0.0) -> None:
         """Record a new message in the session.
@@ -72,7 +65,6 @@ class ChatSession:
         self.total_tokens += tokens
         self.total_cost += cost
         self.update_activity()
-        logger.debug(f"Added message to session {self.session_id}: tokens={tokens}, cost={cost}")
 
     def _register_timeout_callback(self, callback) -> None:
         """Register a callback to be called when session times out.
@@ -82,7 +74,6 @@ class ChatSession:
         """
         if callback not in self._timeout_callbacks:
             self._timeout_callbacks.append(callback)
-            logger.debug(f"Registered timeout callback for session {self.session_id}")
 
     def _unregister_timeout_callback(self, callback) -> None:
         """Unregister a timeout callback.
@@ -92,15 +83,14 @@ class ChatSession:
         """
         if callback in self._timeout_callbacks:
             self._timeout_callbacks.remove(callback)
-            logger.debug(f"Unregistered timeout callback for session {self.session_id}")
 
     def _notify_timeout_callbacks(self) -> None:
         """Notify all registered timeout callbacks."""
         for callback in self._timeout_callbacks:
             try:
                 callback(self)
-            except Exception as e:
-                logger.error(f"Error in timeout callback for session {self.session_id}: {e}")
+            except Exception:
+                pass
 
     def should_end_session(self) -> bool:
         """Check if the session should end due to timeout or max duration.
@@ -117,14 +107,12 @@ class ChatSession:
 
         if timeout_reached:
             self.status = "timeout"
-            logger.info(f"Session {self.session_id} ended due to timeout")
             # Notify timeout callbacks
             self._notify_timeout_callbacks()
             return True
 
         if max_duration_reached:
             self.status = "ended"
-            logger.info(f"Session {self.session_id} ended due to max duration")
             # Notify timeout callbacks
             self._notify_timeout_callbacks()
             return True
@@ -139,7 +127,6 @@ class ChatSession:
         """
         self.end_time = datetime.utcnow()
         self.status = reason
-        logger.info(f"Session {self.session_id} ended with reason: {reason}")
 
     def get_session_duration_minutes(self) -> float:
         """Get the current session duration in minutes."""
@@ -192,7 +179,6 @@ class ChatSessionManager:
     def __init__(self):
         """Initialize the session manager."""
         self.sessions: Dict[str, ChatSession] = {}
-        self.logger = logging.getLogger(__name__)
 
     def create_session(
         self,
@@ -225,7 +211,6 @@ class ChatSessionManager:
         )
 
         self.sessions[session_id] = session
-        self.logger.info(f"Created new chat session: {session_id}")
         return session
 
     def get_session(self, session_id: str) -> Optional[ChatSession]:
@@ -252,7 +237,6 @@ class ChatSessionManager:
         session = self.sessions.get(session_id)
         if session:
             session.end_session(reason)
-            self.logger.info(f"Ended session {session_id} with reason: {reason}")
             return True
         return False
 
@@ -270,7 +254,6 @@ class ChatSessionManager:
         for session_id in expired_sessions:
             session = self.sessions.pop(session_id)
             session.end_session("timeout")
-            self.logger.info(f"Cleaned up expired session: {session_id}")
 
         return len(expired_sessions)
 

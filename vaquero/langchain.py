@@ -7,10 +7,6 @@ tools, and retrievers.
 
 from typing import Any, Dict, List, Optional
 import uuid
-import logging
-
-logger = logging.getLogger(__name__)
-
 try:
     from langchain_core.callbacks.base import BaseCallbackHandler
     from langchain_core.outputs import LLMResult
@@ -76,7 +72,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         # This ensures all spans from this LangChain workflow are grouped together
         if not self._root_trace_id:
             self._root_trace_id = self._trace_id
-            logger.debug(f"Using handler trace ID as root trace ID: {self._root_trace_id}")
 
         # Track if trace has been finalized
         self._trace_finalized = False
@@ -201,7 +196,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             elif "anthropic" in model_name.lower():
                 model_provider = "anthropic"
             
-            logger.debug(f"Extracted model name: {model_name}, provider: {model_provider}")
 
         span_name = f"llm:{model_name}"
 
@@ -302,7 +296,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
                 self._serialized_prompts = serialized_prompts
 
             except Exception as e:
-                logger.debug(f"Error processing prompts: {e}")
                 span.set_tag("langchain.prompts", str(prompts)[:1000])
                 span.set_tag("langchain.prompt_count", len(prompts))
                 serialized_prompts = None
@@ -315,15 +308,12 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             cm = self._spans[run_id]["cm"]
 
             # Debug: Log response type and attributes
-            logger.debug(f"Response type in on_llm_end: {type(response)}")
-            logger.debug(f"Response attributes: {[attr for attr in dir(response) if not attr.startswith('_')]}")
 
             # Extract model information from response metadata if not already set
             if hasattr(response, 'response_metadata') and response.response_metadata:
                 response_metadata = response.response_metadata
                 if 'model_name' in response_metadata and not span.model_name:
                     span.model_name = response_metadata['model_name']
-                    logger.debug(f"Set model name from response metadata: {span.model_name}")
                 
                 # Set model provider based on model name
                 if span.model_name and not span.model_provider:
@@ -333,7 +323,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
                         span.model_provider = "openai"
                     elif "anthropic" in span.model_name.lower():
                         span.model_provider = "anthropic"
-                    logger.debug(f"Set model provider: {span.model_provider}")
 
             # Extract token usage if available and map to canonical fields
             token_usage = None
@@ -341,29 +330,23 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             # Check for Google Gemini usage_metadata first
             if hasattr(response, 'usage_metadata') and response.usage_metadata:
                 token_usage = response.usage_metadata
-                logger.debug(f"Found token usage in usage_metadata: {token_usage}")
             elif hasattr(response, 'llm_output') and response.llm_output:
                 # Try different possible locations for token usage in other providers
                 if isinstance(response.llm_output, dict):
                     token_usage = response.llm_output.get('token_usage') or response.llm_output.get('usage')
-                logger.debug(f"Found token usage in llm_output: {token_usage}")
             elif hasattr(response, 'usage'):
                 # Also check if token usage is directly on the response
                 token_usage = response.usage
-                logger.debug(f"Found token usage in usage: {token_usage}")
             
             # Check for token usage in generations (for LLMResult objects)
             if not token_usage and hasattr(response, 'generations') and response.generations:
-                logger.debug(f"Checking generations for token usage: {len(response.generations)} generations")
                 for generation_list in response.generations:
                     for generation in generation_list:
                         if hasattr(generation, 'message') and hasattr(generation.message, 'usage_metadata'):
                             token_usage = generation.message.usage_metadata
-                            logger.debug(f"Found token usage in generation.message.usage_metadata: {token_usage}")
                             break
                         elif hasattr(generation, 'usage_metadata'):
                             token_usage = generation.usage_metadata
-                            logger.debug(f"Found token usage in generation.usage_metadata: {token_usage}")
                             break
                     if token_usage:
                         break
@@ -374,9 +357,9 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
                     try:
                         value = getattr(response, attr)
                         if not callable(value):
-                            logger.debug(f"Found token-related attribute {attr}: {value}")
-                    except Exception as e:
-                        logger.debug(f"Error accessing {attr}: {e}")
+                            pass
+                    except Exception:
+                        pass
 
             if token_usage:
                 span.set_tag("langchain.token_usage", token_usage)
@@ -405,7 +388,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
                     span.output_tokens = int(output_tokens)
                     span.total_tokens = int(total_tokens)
 
-                    logger.debug(f"Set token counts - input: {input_tokens}, output: {output_tokens}, total: {total_tokens}")
 
                     # Calculate cost if we have model information
                     if hasattr(span, 'model_name') and span.model_name:
@@ -413,10 +395,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
                         # For now, just store the token counts and let the backend calculate cost
                         pass
 
-                except Exception as e:
-                    logger.debug(f"Error extracting token usage: {e}")
-            else:
-                logger.debug("No token usage information found in response")
+                except Exception:
+                    pass
 
             # Add response info and canonical outputs
             if hasattr(response, 'generations'):
@@ -449,7 +429,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         """Called when a tool starts."""
         tool_name = serialized.get("name", "tool") if isinstance(serialized, dict) else "tool"
         span_name = f"tool:{tool_name}"
-        logger.info(f"🔧 TOOL START: {span_name} (run_id: {run_id}, parent: {parent_run_id}, root_trace: {self._root_trace_id})")
 
         # Enhanced metadata for better agent identification
         enhanced_metadata = self.parent_context.copy()
@@ -512,7 +491,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         if run_id in self._spans:
             span = self._spans[run_id]["span"]
             cm = self._spans[run_id]["cm"]
-            logger.info(f"✅ TOOL END: run_id={run_id}, span_name={span.agent_name}, trace_id={span.trace_id}")
             # Add output and canonical outputs
             if output:
                 try:
@@ -527,7 +505,6 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             span.status = "completed"
             if hasattr(self.sdk, '_send_trace'):
                 self.sdk._send_trace(span)
-                logger.info(f"📤 Sent tool span to trace collector: {span.agent_name}")
             
             cm.__exit__(None, None, None)
             del self._spans[run_id]
@@ -703,16 +680,14 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
     def finalize_trace(self):
         """Finalize the trace by ending it and sending to the database."""
         if hasattr(self, '_trace_finalized') and not self._trace_finalized and self._root_trace_id:
-            logger.debug(f"Finalizing LangChain trace: {self._root_trace_id}")
             try:
                 # Use the SDK instance from the callback handler
                 if self.sdk and self.sdk._trace_collector:
                     # End the trace - this will trigger finalization and sending to DB
                     self.sdk._trace_collector.end_trace(self._root_trace_id, None)
                     self._trace_finalized = True
-                    logger.info(f"LangChain trace finalized: {self._root_trace_id}")
-            except Exception as e:
-                logger.error(f"Error finalizing LangChain trace: {e}")
+            except Exception:
+                pass
 
     def __del__(self):
         """Destructor to ensure trace is finalized when handler is garbage collected."""

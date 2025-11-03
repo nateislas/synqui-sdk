@@ -1,11 +1,8 @@
 """LangChain-specific processor for hierarchical trace collection."""
 
-import logging
 from typing import Dict, List, Any, Optional
 from .base_processor import FrameworkProcessor, HierarchicalTrace
 from ..cost_calculator import calculate_cost
-
-logger = logging.getLogger(__name__)
 
 class LangChainProcessor(FrameworkProcessor):
     """LangChain processor that groups internal components under logical agents."""
@@ -24,7 +21,6 @@ class LangChainProcessor(FrameworkProcessor):
         self.spans.append(span_data)
 
         agent_name = span_data.get('agent_name', '')
-        logger.info(f"📥 Processing span: {agent_name}")
         logical_agent = self._determine_logical_agent(span_data)
 
         # Only create logical agents for actual logical agents, not internal components
@@ -51,20 +47,17 @@ class LangChainProcessor(FrameworkProcessor):
             if span_id:
                 self.span_to_logical[span_id] = logical_agent
 
-            logger.debug(f"Added logical agent span {agent_name} to {logical_agent}")
         else:
             # This is an internal component - find its parent logical agent
             parent_logical_agent = self._determine_parent_from_context(span_data)
             if parent_logical_agent and parent_logical_agent in self.internal_components:
                 self.internal_components[parent_logical_agent].append(span_data)
-                logger.debug(f"Added internal component {agent_name} to {parent_logical_agent}")
                 
                 # Process any orphaned components that might now have a parent
                 self._process_orphaned_components()
             else:
                 # Buffer this component as orphaned - it will be processed later
                 self.orphaned_components.append(span_data)
-                logger.debug(f"Buffered orphaned internal component {agent_name} (no parent yet)")
     
     def _process_orphaned_components(self):
         """Process orphaned components that now have a parent."""
@@ -79,7 +72,6 @@ class LangChainProcessor(FrameworkProcessor):
             
             if parent_logical_agent and parent_logical_agent in self.internal_components:
                 self.internal_components[parent_logical_agent].append(span_data)
-                logger.debug(f"Assigned orphaned component {agent_name} to {parent_logical_agent}")
             else:
                 # Still orphaned
                 remaining_orphans.append(span_data)
@@ -118,12 +110,9 @@ class LangChainProcessor(FrameworkProcessor):
         # NEW: For AgentExecutor, try to extract a better name from metadata
         if agent_name == 'langchain:AgentExecutor':
             # Debug: Print what we have
-            print(f"DEBUG: Processing AgentExecutor with agent_name='{agent_name}'")
-            print(f"DEBUG: lc_meta keys: {list(lc_meta.keys()) if lc_meta else 'None'}")
 
             # First priority: Check for agent_name in lc_meta directly (it seems to be at the top level)
             agent_name_from_config = lc_meta.get('agent_name') if lc_meta else None
-            print(f"DEBUG: agent_name_from_config: {agent_name_from_config}")
             if agent_name_from_config:
                 return f"langchain:{agent_name_from_config}"
 
@@ -249,9 +238,8 @@ class LangChainProcessor(FrameworkProcessor):
         
         # Log any components that are still orphaned
         if self.orphaned_components:
-            logger.warning(f"Found {len(self.orphaned_components)} orphaned components after final processing")
             for orphan in self.orphaned_components:
-                logger.warning(f"  - Orphaned: {orphan.get('agent_name', 'unknown')}")
+                pass  # Orphaned components logged but not processed
         
         agents = []
         dependencies = []
@@ -331,9 +319,7 @@ class LangChainProcessor(FrameworkProcessor):
 
             # Create internal components for this logical agent
             components = self.internal_components.get(logical_agent_name, [])
-            logger.info(f"Processing {len(components)} internal components for {logical_agent_name}")
             for span in components:
-                logger.debug(f"  - Component: {span.get('agent_name', 'unknown')}")
                 # Preserve session_id in component metadata
                 component_metadata = span.get('metadata', {}).copy()
                 component_tags = span.get('tags', {}).copy()
@@ -396,11 +382,6 @@ class LangChainProcessor(FrameworkProcessor):
             'cost': 0.0
         }
         
-        # Debug: Log what's in the spans
-        logger.debug(f"Extracting model info from {len(spans)} spans")
-        for i, span in enumerate(spans):
-            logger.debug(f"Span {i}: {span.get('agent_name', 'unknown')} - model_name: {span.get('model_name')}, model_provider: {span.get('model_provider')}")
-        
         # Look for model information in spans
         for span in spans:
             # Check if span has model information
@@ -420,9 +401,7 @@ class LangChainProcessor(FrameworkProcessor):
                         provider=model_info['model_provider']
                     )
                     model_info['cost'] = cost
-                    logger.debug(f"Calculated cost: ${cost:.6f} for {input_tokens} input + {output_tokens} output tokens")
                 
-                logger.debug(f"Found model info: {model_info}")
                 break  # Use the first model info found
         
         return model_info

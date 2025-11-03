@@ -5,7 +5,6 @@ This module provides a thin callback handler that emits normalized spans
 for LangGraph applications, delegating all aggregation to the processor.
 """
 
-import logging
 from typing import Any, Dict, Optional, List
 from datetime import datetime
 import uuid
@@ -13,8 +12,6 @@ import uuid
 from .sdk import VaqueroSDK, get_global_instance
 from .chat_session import ChatSession
 from .serialization import safe_serialize
-
-logger = logging.getLogger(__name__)
 
 try:
     from langchain_core.callbacks.base import BaseCallbackHandler
@@ -73,72 +70,53 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
 
     def _extract_component_name(self, serialized: Optional[Dict], metadata: Optional[Dict], tags: Optional[List[str]]) -> str:
         """Extract component name from metadata/tags for LangGraph spans."""
-        logger.info(f"🔍 NAME EXTRACTION: Starting extraction")
-        logger.info(f"🔍 NAME EXTRACTION: serialized keys = {list(serialized.keys()) if serialized else None}")
-        logger.info(f"🔍 NAME EXTRACTION: serialized.get('name') = {serialized.get('name') if serialized else None}")
-        logger.info(f"🔍 NAME EXTRACTION: metadata keys = {list(metadata.keys()) if metadata else None}")
-        logger.info(f"🔍 NAME EXTRACTION: metadata = {metadata}")
-        logger.info(f"🔍 NAME EXTRACTION: tags = {tags}")
         
         # Priority 1: Direct node name from metadata
         if metadata and 'node' in metadata:
-            logger.info(f"🔍 NAME EXTRACTION: Found via Priority 1 (metadata['node']) = {metadata['node']}")
             return metadata['node']
 
         # Priority 2: LangGraph path extraction
         if metadata and 'langgraph_path' in metadata:
             path = metadata['langgraph_path']
-            logger.info(f"🔍 NAME EXTRACTION: Checking Priority 2 (langgraph_path) = {path}, type = {type(path)}")
             if isinstance(path, tuple) and len(path) > 1:
                 result = str(path[1])
-                logger.info(f"🔍 NAME EXTRACTION: Found via Priority 2 = {result}")
                 return result
 
         # Priority 3: LangGraph triggers extraction
         if metadata and 'langgraph_triggers' in metadata:
             triggers = metadata['langgraph_triggers']
-            logger.info(f"🔍 NAME EXTRACTION: Checking Priority 3 (langgraph_triggers) = {triggers}, type = {type(triggers)}")
             if isinstance(triggers, tuple) and len(triggers) > 0:
                 trigger = triggers[0]
                 if ':' in trigger:
                     parts = trigger.split(':')
                     if len(parts) >= 3:
                         result = parts[2]  # "branch:to:agent" -> "agent"
-                        logger.info(f"🔍 NAME EXTRACTION: Found via Priority 3 = {result}")
                         return result
 
         # Priority 4: Tag-based extraction for known agent types
         if tags:
-            logger.info(f"🔍 NAME EXTRACTION: Checking Priority 4 (tags) = {tags}")
             for tag in tags:
                 if tag in ['explainer', 'developer', 'analogy_creator', 'vulnerability_expert']:
-                    logger.info(f"🔍 NAME EXTRACTION: Found via Priority 4 (known tag) = {tag}")
                     return tag
                 # Also check for general 'agent' tag as fallback
                 if tag == 'agent':
-                    logger.info(f"🔍 NAME EXTRACTION: Found via Priority 4 (generic agent tag) = {tag}")
                     return tag
 
         # Priority 5: Serialized name (fallback) - but avoid using "chain"
         if serialized and 'name' in serialized:
             name = serialized['name']
-            logger.info(f"🔍 NAME EXTRACTION: Checking Priority 5 (serialized['name']) = {name}")
             if name and name != 'chain':  # Avoid using "chain" as agent name
-                logger.info(f"🔍 NAME EXTRACTION: Found via Priority 5 = {name}")
                 return name
 
         # Priority 6: Additional metadata fields that might contain agent names
         if metadata:
-            logger.info(f"🔍 NAME EXTRACTION: Checking Priority 6 (metadata fields)")
             # Check for any field that might contain the agent name
             for key in ['agent_name', 'node_name', 'component_name']:
                 if key in metadata and metadata[key]:
                     result = str(metadata[key])
-                    logger.info(f"🔍 NAME EXTRACTION: Found via Priority 6 (metadata['{key}']) = {result}")
                     return result
 
         # Return "unknown_node" for nodes to distinguish from other component types
-        logger.info(f"🔍 NAME EXTRACTION: No match found, returning 'unknown_node'")
         return "unknown_node"
     
     def _detect_model_provider(self, model_name: str) -> str:
@@ -214,14 +192,12 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             parent_node = parent_metadata.get('langgraph_node')
             if parent_node == langgraph_node:
                 # Parent is the same node → this is an internal chain within the node
-                logger.info(f"🔍 NODE DETECTION: Parent has same langgraph_node='{langgraph_node}' → nested chain")
                 is_nested = True
         
         if is_nested:
             return (False, None)  # Internal chain, not the node itself
         
         # This is a top-level node execution
-        logger.info(f"🔍 NODE DETECTION: Detected as NODE execution: {langgraph_node}")
         return (True, langgraph_node)
     
     def set_graph_architecture(self, graph: Any, graph_name: Optional[str] = None) -> None:
@@ -261,9 +237,7 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
                 'entry_point': entry_point,
                 'graph_name': graph_name or 'langgraph_workflow'
             }
-            logger.info(f"📊 GRAPH ARCH: Graph architecture set: {len(graph_nodes)} nodes, {len(graph_edges)} edges, entry={entry_point}")
         except Exception as e:
-            logger.warning(f"Failed to extract graph architecture: {e}")
             self._graph_architecture = None
     
     def _emit_span(self, span_data: Dict[str, Any]) -> None:
@@ -281,16 +255,9 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         # This ensures the processor can extract it even if there are no graph spans
         if self._graph_architecture and 'graph_architecture' not in span_data.get('metadata', {}):
             span_data['metadata']['graph_architecture'] = self._graph_architecture
-            logger.info(f"📊 GRAPH ARCH: Added graph architecture to span metadata (fallback): {len(self._graph_architecture.get('nodes', []))} nodes")
-
-        logger.info(f"📤 EMIT SPAN: component_type={span_data.get('component_type')}, name={span_data.get('name')}, "
-                   f"span_id={span_data.get('span_id')}, message_sequence={span_data.get('message_sequence')}")
 
         if self.sdk and getattr(self.sdk, '_trace_collector', None):
             self.sdk._trace_collector.process_span(span_data)
-            logger.debug(f"Emitted LangGraph span: {span_data.get('component_type')} {span_data.get('name')}")
-        else:
-            logger.warning("No trace collector available for LangGraph span")
 
     # ===== MINIMAL CALLBACK IMPLEMENTATIONS =====
 
@@ -306,7 +273,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Handle graph start for LangGraph applications."""
-        logger.debug(f"LangGraph graph start: {run_id}")
 
         # Try to extract graph architecture from config if available
         # LangGraph may pass config through kwargs in some cases, or we can check configurable
@@ -318,7 +284,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             configurable = config.get('configurable', {})
             if 'graph_architecture' in configurable:
                 graph_architecture = configurable['graph_architecture']
-                logger.debug("Extracted graph architecture from config.configurable")
         
         # Increment message sequence per graph invocation (user turn)
         self._session_context['message_sequence'] = (self._session_context.get('message_sequence') or 0) + 1
@@ -330,7 +295,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         # Add graph architecture to metadata if we have it
         if graph_architecture:
             graph_metadata['graph_architecture'] = graph_architecture
-            logger.info(f"📊 GRAPH ARCH: Added graph architecture to graph span metadata: {len(graph_architecture.get('nodes', []))} nodes, {len(graph_architecture.get('edges', []))} edges")
         
         self._runs[run_id] = {
             'span_id': span_id,
@@ -351,7 +315,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
     ) -> None:
         """Handle graph end for LangGraph applications."""
         if run_id not in self._runs:
-            logger.warning(f"No graph run found for {run_id}")
             return
 
         run_info = self._runs[run_id]
@@ -387,15 +350,9 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Handle node start for LangGraph applications."""
-        logger.info(f"🚀 NODE START CALLBACK: run_id={run_id}, parent_run_id={parent_run_id}")
-        logger.info(f"🚀 NODE START: serialized keys={list(serialized.keys()) if serialized else None}")
-        logger.info(f"🚀 NODE START: serialized={serialized}")
-        logger.info(f"🚀 NODE START: metadata={metadata}")
-        logger.info(f"🚀 NODE START: tags={tags}")
 
         # Extract node name
         name = self._extract_component_name(serialized, metadata, tags)
-        logger.info(f"🚀 NODE START: Extracted name = {name}")
 
         # Track the node run - store data for end callback
         span_id = str(uuid.uuid4())
@@ -420,7 +377,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
     ) -> None:
         """Handle node end for LangGraph applications."""
         if run_id not in self._runs:
-            logger.warning(f"No node run found for {run_id}")
             return
 
         run_info = self._runs[run_id]
@@ -441,7 +397,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             'metadata': run_info.get('metadata', {})
         }
 
-        logger.info(f"🚀 NODE END: Emitting span - component_type='node', name='{run_info['name']}', span_id={run_info['span_id']}")
         self._emit_span(span_data)
         del self._runs[run_id]
 
@@ -457,7 +412,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Handle LLM start for LangGraph applications."""
-        logger.debug(f"LangGraph LLM start: {run_id}")
 
         # Track the LLM run - store data for end callback
         span_id = str(uuid.uuid4())
@@ -516,7 +470,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
     ) -> None:
         """Handle LLM end for LangGraph applications."""
         if run_id not in self._runs:
-            logger.warning(f"No LLM run found for {run_id}")
             return
             
         run_info = self._runs[run_id]
@@ -528,74 +481,53 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             llm_metadata.update(response.llm_output)
 
         # INFO-level logging to inspect LLMResult structure
-        logger.info(f"🔍 LLM RESULT INSPECTION: response type={type(response).__name__}")
-        logger.info(f"🔍 LLM RESULT INSPECTION: response class={type(response)}")
         
         # Check all attributes of response
         response_attrs = [attr for attr in dir(response) if not attr.startswith('_')]
-        logger.info(f"🔍 LLM RESULT INSPECTION: response attributes={response_attrs}")
         
         # Check if it's LLMResult type
         if 'LLMResult' in str(type(response)):
-            logger.info(f"🔍 LLM RESULT INSPECTION: This is an LLMResult object")
             
             # Inspect llm_output
             if hasattr(response, 'llm_output'):
                 llm_out = response.llm_output
-                logger.info(f"🔍 LLM RESULT INSPECTION: has llm_output={llm_out is not None}")
                 if llm_out:
                     if isinstance(llm_out, dict):
-                        logger.info(f"🔍 LLM RESULT INSPECTION: llm_output keys={list(llm_out.keys())}")
-                        logger.info(f"🔍 LLM RESULT INSPECTION: llm_output={llm_out}")
                         if 'token_usage' in llm_out:
-                            logger.info(f"🔍 LLM RESULT INSPECTION: llm_output['token_usage']={llm_out['token_usage']}")
+                            pass
                     else:
-                        logger.info(f"🔍 LLM RESULT INSPECTION: llm_output type={type(llm_out)}, value={llm_out}")
+                        pass
             
             # Inspect generations
             if hasattr(response, 'generations'):
                 gens = response.generations
-                logger.info(f"🔍 LLM RESULT INSPECTION: has generations={gens is not None}")
                 if gens and isinstance(gens, list) and len(gens) > 0:
-                    logger.info(f"🔍 LLM RESULT INSPECTION: generations count={len(gens)}")
                     if len(gens[0]) > 0:
                         first_gen = gens[0][0]
-                        logger.info(f"🔍 LLM RESULT INSPECTION: first generation type={type(first_gen).__name__}")
-                        logger.info(f"🔍 LLM RESULT INSPECTION: first generation attributes={[attr for attr in dir(first_gen) if not attr.startswith('_')]}")
                         
                         # Check if generation has message with response_metadata
                         if hasattr(first_gen, 'message'):
                             msg = first_gen.message
-                            logger.info(f"🔍 LLM RESULT INSPECTION: message type={type(msg).__name__}")
                             if hasattr(msg, 'response_metadata'):
                                 meta = msg.response_metadata
-                                logger.info(f"🔍 LLM RESULT INSPECTION: response_metadata type={type(meta)}")
-                                logger.info(f"🔍 LLM RESULT INSPECTION: response_metadata={meta}")
                                 if isinstance(meta, dict) and 'token_usage' in meta:
-                                    logger.info(f"🔍 LLM RESULT INSPECTION: response_metadata['token_usage']={meta['token_usage']}")
+                                    pass
                                 
                                 # Also check usage_metadata in message
                                 if hasattr(msg, 'usage_metadata'):
                                     usage = msg.usage_metadata
-                                    logger.info(f"🔍 LLM RESULT INSPECTION: message.usage_metadata type={type(usage)}")
-                                    logger.info(f"🔍 LLM RESULT INSPECTION: message.usage_metadata={usage}")
         else:
             # Standard response object inspection
-            logger.info(f"🔍 LLM RESULT INSPECTION: has usage_metadata={hasattr(response, 'usage_metadata')}")
-            logger.info(f"🔍 LLM RESULT INSPECTION: has llm_output={hasattr(response, 'llm_output')}")
             if hasattr(response, 'llm_output') and response.llm_output:
-                logger.info(f"🔍 LLM RESULT INSPECTION: llm_output keys={list(response.llm_output.keys()) if isinstance(response.llm_output, dict) else 'not_dict'}")
-                logger.info(f"🔍 LLM RESULT INSPECTION: llm_output={response.llm_output}")
+                pass
             if hasattr(response, 'usage_metadata'):
                 usage = response.usage_metadata
-                logger.info(f"🔍 LLM RESULT INSPECTION: usage_metadata type={type(usage)}")
-                logger.info(f"🔍 LLM RESULT INSPECTION: usage_metadata attributes={[attr for attr in dir(usage) if not attr.startswith('_')]}")
                 if hasattr(usage, 'input_tokens'):
-                    logger.info(f"🔍 LLM RESULT INSPECTION: usage.input_tokens={getattr(usage, 'input_tokens', None)}")
+                    pass
                 if hasattr(usage, 'output_tokens'):
-                    logger.info(f"🔍 LLM RESULT INSPECTION: usage.output_tokens={getattr(usage, 'output_tokens', None)}")
+                    pass
                 if hasattr(usage, 'total_tokens'):
-                    logger.info(f"🔍 LLM RESULT INSPECTION: usage.total_tokens={getattr(usage, 'total_tokens', None)}")
+                    pass
 
         # Extract token counts if available
         # Try usage_metadata first (LangChain standard)
@@ -611,33 +543,26 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
                     'output_tokens': output_tokens or 0,
                     'total_tokens': total_tokens or ((input_tokens or 0) + (output_tokens or 0))
                 })
-                logger.info(f"🔢 TOKEN EXTRACTION (usage_metadata): input={input_tokens}, output={output_tokens}, total={total_tokens}")
         
         # Also check llm_output for token usage (fallback for different response formats)
         if hasattr(response, 'llm_output') and response.llm_output:
             if isinstance(response.llm_output, dict):
                 if 'token_usage' in response.llm_output:
                     token_usage = response.llm_output['token_usage']
-                    logger.debug(f"🔍 LLM RESPONSE DEBUG: token_usage={token_usage}")
                     if isinstance(token_usage, dict):
                         # Only update if usage_metadata didn't set them or set them to 0
                         if 'input_tokens' not in llm_metadata or llm_metadata.get('input_tokens', 0) == 0:
                             llm_metadata['input_tokens'] = token_usage.get('prompt_tokens', 0) or token_usage.get('input_tokens', 0) or 0
-                            logger.info(f"🔢 TOKEN EXTRACTION (llm_output.token_usage): input={llm_metadata['input_tokens']}")
                         if 'output_tokens' not in llm_metadata or llm_metadata.get('output_tokens', 0) == 0:
                             llm_metadata['output_tokens'] = token_usage.get('completion_tokens', 0) or token_usage.get('output_tokens', 0) or 0
-                            logger.info(f"🔢 TOKEN EXTRACTION (llm_output.token_usage): output={llm_metadata['output_tokens']}")
                         if 'total_tokens' not in llm_metadata or llm_metadata.get('total_tokens', 0) == 0:
                             llm_metadata['total_tokens'] = token_usage.get('total_tokens', 0) or (llm_metadata.get('input_tokens', 0) + llm_metadata.get('output_tokens', 0))
-                            logger.info(f"🔢 TOKEN EXTRACTION (llm_output.token_usage): total={llm_metadata['total_tokens']}")
                 
                 # Also check for direct token fields in llm_output
                 if 'input_tokens' not in llm_metadata and 'input_token_count' in response.llm_output:
                     llm_metadata['input_tokens'] = response.llm_output.get('input_token_count', 0)
-                    logger.info(f"🔢 TOKEN EXTRACTION (llm_output.input_token_count): input={llm_metadata['input_tokens']}")
                 if 'output_tokens' not in llm_metadata and 'output_token_count' in response.llm_output:
                     llm_metadata['output_tokens'] = response.llm_output.get('output_token_count', 0)
-                    logger.info(f"🔢 TOKEN EXTRACTION (llm_output.output_token_count): output={llm_metadata['output_tokens']}")
         
         # Check generations for token usage - PRIMARY PATH for LLMResult objects
         if hasattr(response, 'generations') and response.generations:
@@ -659,7 +584,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
                                     llm_metadata['input_tokens'] = input_toks
                                     llm_metadata['output_tokens'] = output_toks
                                     llm_metadata['total_tokens'] = total_toks
-                                    logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.usage_metadata): input={input_toks}, output={output_toks}, total={total_toks}")
                                     break  # Found tokens, use this
                         
                         # PRIORITY 2: Check message.response_metadata.token_usage (alternative format)
@@ -670,13 +594,10 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
                                 if isinstance(token_usage, dict):
                                     if 'input_tokens' not in llm_metadata or llm_metadata.get('input_tokens', 0) == 0:
                                         llm_metadata['input_tokens'] = token_usage.get('prompt_tokens', 0) or token_usage.get('input_tokens', 0) or 0
-                                        logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.response_metadata.token_usage): input={llm_metadata['input_tokens']}")
                                     if 'output_tokens' not in llm_metadata or llm_metadata.get('output_tokens', 0) == 0:
                                         llm_metadata['output_tokens'] = token_usage.get('completion_tokens', 0) or token_usage.get('output_tokens', 0) or 0
-                                        logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.response_metadata.token_usage): output={llm_metadata['output_tokens']}")
                                     if 'total_tokens' not in llm_metadata or llm_metadata.get('total_tokens', 0) == 0:
                                         llm_metadata['total_tokens'] = token_usage.get('total_tokens', 0) or (llm_metadata.get('input_tokens', 0) + llm_metadata.get('output_tokens', 0))
-                                        logger.info(f"🔢 TOKEN EXTRACTION (generations[].message.response_metadata.token_usage): total={llm_metadata['total_tokens']}")
                                     break  # Found tokens, use this
         
         # Final check: ensure we have at least zeros
@@ -687,15 +608,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         if 'total_tokens' not in llm_metadata:
             llm_metadata['total_tokens'] = llm_metadata.get('input_tokens', 0) + llm_metadata.get('output_tokens', 0)
         
-        # Log final token extraction result
-        if llm_metadata.get('input_tokens') or llm_metadata.get('output_tokens'):
-            logger.info(f"🔢 TOKEN EXTRACTION FINAL: input={llm_metadata.get('input_tokens', 0)}, "
-                       f"output={llm_metadata.get('output_tokens', 0)}, "
-                       f"total={llm_metadata.get('total_tokens', 0)}")
-        else:
-            logger.warning(f"⚠️ TOKEN EXTRACTION FAILED: No tokens found in response. response type={type(response)}, "
-                          f"has usage_metadata={hasattr(response, 'usage_metadata')}, "
-                          f"has llm_output={hasattr(response, 'llm_output')}")
 
         # Merge stored metadata with LLM metadata
         stored_metadata = run_info.get('metadata', {})
@@ -766,7 +678,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
                 )
                 span_data['cost'] = cost
             except Exception as e:
-                logger.debug(f"Failed to calculate cost: {e}")
                 span_data['cost'] = 0.0
         else:
             span_data['cost'] = 0.0
@@ -786,7 +697,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Handle tool start for LangGraph applications."""
-        logger.debug(f"LangGraph tool start: {run_id}")
 
         # Track the tool run - store data for end callback
         span_id = str(uuid.uuid4())
@@ -811,7 +721,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
     ) -> None:
         """Handle tool end for LangGraph applications."""
         if run_id not in self._runs:
-            logger.warning(f"No tool run found for {run_id}")
             return
             
         run_info = self._runs[run_id]
@@ -847,11 +756,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> None:
         """Handle chain start for LangGraph applications."""
-        logger.info(f"⛓️ CHAIN START CALLBACK: run_id={run_id}, parent_run_id={parent_run_id}")
-        logger.info(f"⛓️ CHAIN START: serialized keys={list(serialized.keys()) if serialized else None}")
-        logger.info(f"⛓️ CHAIN START: serialized={serialized}")
-        logger.info(f"⛓️ CHAIN START: metadata={metadata}")
-        logger.info(f"⛓️ CHAIN START: tags={tags}")
 
         # Detect if this is a node execution or internal chain
         is_node, node_name = self._is_node_execution(metadata, parent_run_id)
@@ -860,12 +764,10 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             # This is a logical agent node execution
             component_type = 'node'
             name = node_name  # Use langgraph_node directly
-            logger.info(f"⛓️ CHAIN START: Detected as NODE execution: {name}")
         else:
             # This is an internal chain or component
             component_type = 'chain'
             name = self._extract_component_name(serialized, metadata, tags)
-            logger.info(f"⛓️ CHAIN START: Detected as CHAIN component: {name}")
 
         # Track the chain run - store data for end callback
         span_id = str(uuid.uuid4())
@@ -880,7 +782,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             'inputs': inputs,
             'metadata': metadata or {}
         }
-        logger.info(f"⛓️ CHAIN START: Stored in _runs with component_type='{component_type}', name='{name}'")
 
     def on_chain_end(
         self,
@@ -891,7 +792,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
     ) -> None:
         """Handle chain end for LangGraph applications."""
         if run_id not in self._runs:
-            logger.warning(f"No chain run found for {run_id}")
             return
 
         run_info = self._runs[run_id]
@@ -912,8 +812,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
             'metadata': run_info.get('metadata', {})
         }
 
-        logger.info(f"⛓️ CHAIN END: Emitting span - component_type='{run_info['component_type']}', "
-                   f"name='{run_info['name']}', span_id={run_info['span_id']}")
         self._emit_span(span_data)
         del self._runs[run_id]
 
@@ -972,7 +870,6 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
     def _handle_error(self, run_id: str, error: Exception, component_type: str) -> None:
         """Handle errors for any component type."""
         if run_id not in self._runs:
-            logger.warning(f"No {component_type} run found for {run_id}")
             return
 
         run_info = self._runs[run_id]

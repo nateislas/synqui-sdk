@@ -12,7 +12,6 @@ No user code, data, or sensitive information is ever transmitted.
 
 import os
 import sys
-import logging
 from typing import Optional, Dict, Any
 from datetime import datetime
 import json
@@ -26,7 +25,7 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+
 
 
 class SDKAnalytics:
@@ -102,8 +101,7 @@ class SDKAnalytics:
                 return 'flask'
             
             return 'unknown'
-        except Exception as e:
-            logger.debug(f"Error detecting framework: {e}")
+        except Exception:
             return 'unknown'
     
     def _get_sdk_version(self) -> str:
@@ -158,11 +156,11 @@ class SDKAnalytics:
             )
             
             if response.status_code != 200:
-                logger.debug(f"Analytics event failed: {response.status_code}")
+                return
         
-        except Exception as e:
+        except Exception:
             # Silently fail - analytics should never break user code
-            logger.debug(f"Failed to track analytics event: {e}")
+            return
     
     def _get_distinct_id(self) -> str:
         """

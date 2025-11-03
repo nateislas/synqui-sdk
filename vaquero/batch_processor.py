@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import logging
 import time
 import threading
 from dataclasses import asdict
@@ -27,9 +26,6 @@ try:
 except ImportError:
     # Fallback for when running from SDK directly without backend
     trace_processor = None
-
-logger = logging.getLogger(__name__)
-
 
 class BatchProcessor:
     """Handles batching and sending of trace events.
@@ -67,13 +63,11 @@ class BatchProcessor:
     def start(self):
         """Start the batch processor thread."""
         if self._running:
-            logger.warning("Batch processor already running")
             return
 
         self._running = True
         self._thread = Thread(target=self._process_loop, daemon=True, name="Vaquero-BatchProcessor")
         self._thread.start()
-        logger.info("Batch processor started")
 
     def shutdown(self, timeout: float = 5.0):
         """Shutdown the batch processor and flush remaining events.
@@ -84,7 +78,6 @@ class BatchProcessor:
         if not self._running:
             return
 
-        logger.info("Shutting down batch processor...")
         self._running = False
 
         # Process remaining events in the queue
@@ -96,16 +89,14 @@ class BatchProcessor:
                 batch_to_send = self._batch.copy()
                 self._batch.clear()
                 self._last_flush = time.time()
-                logger.debug(f"Flushing final batch with {len(batch_to_send)} events")
                 self._send_batch_sync(batch_to_send)
-            except Exception as e:
-                logger.error(f"Error flushing final batch: {e}")
+            except Exception:
+                pass
 
         # Wait for thread to finish
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=timeout)
 
-        logger.info("Batch processor shutdown completed")
 
     def _detect_framework(self, span: Dict[str, Any]) -> Optional[str]:
         """Detect the framework from span metadata or name patterns."""
@@ -140,8 +131,8 @@ class BatchProcessor:
         # Ensure we pull any pending events from the queue
         try:
             self._process_queue()
-        except Exception as e:
-            logger.error(f"Error processing queue before flush: {e}")
+        except Exception:
+            pass
 
         if not self._batch:
             return
@@ -150,9 +141,7 @@ class BatchProcessor:
         batch_to_send = self._batch.copy()
         self._batch.clear()
         self._last_flush = time.time()
-        logger.debug(f"Flushing batch with {len(batch_to_send)} events")
         self._send_batch_sync(batch_to_send)
-        logger.debug("Manual flush completed")
         # Attempt to drain any per-trace buffered groups that are now ready (e.g., root just queued)
         try:
             self._send_batch_sync([])
@@ -161,7 +150,6 @@ class BatchProcessor:
 
     def _process_loop(self):
         """Main processing loop that runs in the background thread."""
-        logger.debug("Batch processor loop started")
 
         while self._running:
             try:
@@ -179,7 +167,6 @@ class BatchProcessor:
                 time.sleep(0.1)
 
             except Exception as e:
-                logger.error(f"Error in batch processor loop: {e}")
                 # Increase delay on errors to prevent error storms
                 time.sleep(min(1.0, 0.1 * (self._consecutive_failures + 1)))
 
@@ -206,11 +193,10 @@ class BatchProcessor:
                 # No more events in queue
                 break
             except Exception as e:
-                logger.error(f"Error processing queue item: {e}")
                 break
 
         if events_processed > 0:
-            logger.debug(f"Processed {events_processed} events, batch size: {len(self._batch)}")
+            pass
 
     def _process_remaining_events(self):
         """Process any remaining events in the queue during shutdown."""
@@ -226,12 +212,11 @@ class BatchProcessor:
                         remaining_events.append(event)
                 except Empty:
                     break
-        except Exception as e:
-            logger.error(f"Error processing remaining events: {e}")
+        except Exception:
+            pass
 
         if remaining_events:
             self._batch.extend(remaining_events)
-            logger.info(f"Added {len(remaining_events)} remaining events to final batch")
 
     def _should_flush(self) -> bool:
         """Check if the current batch should be flushed.
@@ -262,7 +247,6 @@ class BatchProcessor:
         self._batch.clear()
         self._last_flush = time.time()
 
-        logger.debug(f"Flushing batch with {len(batch_to_send)} events")
 
         # Send batch in a separate thread to avoid blocking
         send_thread = Thread(
@@ -278,11 +262,8 @@ class BatchProcessor:
         This buffers events per trace_id and only sends groups that include a root span.
         """
         if not batch:
-            logger.debug("Batch processor: Empty batch, nothing to send")
             return
 
-        logger.info(f"Batch processor: === SENDING BATCH TO API ===")
-        logger.info(f"Batch processor: Batch size: {len(batch)} events")
 
         # Normalize events to include required fields (TraceCreate schema)
         normalized: List[Dict[str, Any]] = []
@@ -325,16 +306,6 @@ class BatchProcessor:
                 if not tid:
                     continue
 
-                # Debug logging for workflow spans
-                if self.config.debug:
-                    if item.get("name") == "linear_workflow" or item.get("agent_name") == "linear_workflow":
-                        print(f"🔍 Workflow span: trace_id={tid}, parent_span_id={item.get('parent_span_id')}, span_id={item.get('span_id')}")
-                        print(f"🔍 Workflow span details: {item}")
-                    elif item.get("name"):
-                        print(f"🔍 Regular span: {item.get('name')}")
-                    elif item.get("agent_name"):
-                        print(f"🔍 Agent span: {item.get('agent_name')}")
-
                 self._pending_by_trace.setdefault(tid, []).append(item)
 
             # Build sendable groups: those with a root span present
@@ -353,7 +324,6 @@ class BatchProcessor:
 
             # If nothing is ready, return and keep buffering
             if not ready_trace_ids:
-                logger.debug("No ready trace groups with root span present; buffering")
                 return
 
             # Collect payload parts from all ready groups
@@ -374,8 +344,6 @@ class BatchProcessor:
             self._current_items_by_trace = {}
             for tid in ready_trace_ids:
                 self._current_items_by_trace[tid] = self._pending_by_trace.pop(tid, [])
-                if self.config.debug:
-                    print(f"🔍 Processing trace {tid} with {len(self._current_items_by_trace[tid])} items")
 
                 # Split into one trace (root) and agents (children)
                 # Logic: Root items have no parent_span_id. Everything else is a child.
@@ -384,40 +352,21 @@ class BatchProcessor:
                 root_items = [it for it in items if not it.get("parent_span_id")]
                 child_items = [it for it in items if it.get("parent_span_id")]
 
-                if self.config.debug:
-                    print(f"🔍 Trace {tid}: {len(root_items)} root items, {len(child_items)} child items")
-
-                # Debug: Show what items we have
-                if self.config.debug:
-                    for i, item in enumerate(items):
-                        span_id = item.get("span_id")
-                        name = item.get("agent_name") or item.get("function_name") or item.get("name")
-                        parent_span_id = item.get("parent_span_id")
-                        print(f"   Item {i}: span_id={span_id}, name={name}, parent_span_id={parent_span_id}")
-
-                # Debug: Check for duplicates before processing
+                # Check for duplicates before processing
                 span_ids = [item.get("span_id") for item in items]
                 duplicates = [x for x in span_ids if span_ids.count(x) > 1]
-                if duplicates and self.config.debug:
-                    print(f"🔍 DUPLICATES FOUND in items for trace {tid}: {set(duplicates)}")
 
                 # First, process child items and mark their span_ids as processed
                 for child in child_items:
                     span_id = child.get("span_id")
                     if span_id not in processed_span_ids:
                         processed_span_ids.add(span_id)
-                        print(f"🔍 Processing child item: span_id={span_id}")
-                    else:
-                        print(f"🔍 SKIPPING child item (already processed): span_id={span_id}")
 
                 # Then, process root items and mark their span_ids as processed
                 for item in root_items[1:]:  # Skip first one, it's the trace
                     span_id = item.get("span_id")
                     if span_id not in processed_span_ids:
                         processed_span_ids.add(span_id)
-                        print(f"🔍 Processing root item: span_id={span_id}")
-                    else:
-                        print(f"🔍 SKIPPING root item (already processed): span_id={span_id}")
 
                 # Check for duplicates and remove them
                 seen_span_ids = set()
@@ -430,12 +379,9 @@ class BatchProcessor:
 
                 # Log if duplicates were found
                 if len(deduplicated_items) < len(items) and self.config.debug:
-                    print(f"🔍 DEBUG: Removed {len(items) - len(deduplicated_items)} duplicate spans for trace_id {tid}")
                     for item in items:
                         if item.get("span_id") in seen_span_ids:
                             seen_span_ids.remove(item.get("span_id"))
-                        else:
-                            print(f"    - DUPLICATE: {item.get('name') or item.get('agent_name')} (span_id: {item.get('span_id')})")
 
                 # Use deduplicated items
                 items = deduplicated_items
@@ -524,8 +470,6 @@ class BatchProcessor:
                     item.get("agent_name") in workflow_names
                 ]
                 # Don't extend child_items with workflow items to prevent duplication
-                if self.config.debug:
-                    print(f"🔍 Found {len(workflow_items)} workflow items (will be processed as root items only)")
 
                 # Create agents from child items with unique agent IDs
                 for child in child_items:
@@ -533,7 +477,6 @@ class BatchProcessor:
 
                     # Skip if this span_id has already been processed (prevents duplicates)
                     if span_id in processed_span_ids:
-                        print(f"🔍 DEBUG: Skipping duplicate span_id {span_id} in child_items")
                         continue
 
                     processed_span_ids.add(span_id)
@@ -549,22 +492,19 @@ class BatchProcessor:
                         agent_id_counters[trace_id][agent_name] += 1
                         # Create unique agent ID by appending counter
                         agent_id = f"{span_id}_{agent_id_counters[trace_id][agent_name]}"
-                        if self.config.debug:
-                            print(f"🔍 DEBUG: Created unique agent_id {agent_id} for duplicate {agent_name} in trace {trace_id}")
                     else:
                         agent_id_counters[trace_id][agent_name] = 0
                         agent_id = span_id
 
                     # Get metadata from the child span (which should contain source code)
                     child_metadata = child.get("metadata", {})
-                    logger.info(f"Batch processor: Child span metadata keys: {list(child_metadata.keys())}")
 
                     # Check if source code is in the child metadata
                     source_code = child_metadata.get("source_code")
                     if source_code:
-                        logger.info(f"Batch processor: CHILD SPAN CONTAINS SOURCE CODE (length: {len(source_code)})")
+                        pass
                     else:
-                        logger.warning(f"Batch processor: CHILD SPAN DOES NOT CONTAIN SOURCE CODE")
+                        pass
 
                     agent_data = {
                         "trace_id": trace_id,
@@ -624,8 +564,6 @@ class BatchProcessor:
                                 "dependency_type": "calls"
                             }
                             dependencies.append(dependency)
-                            if self.config.debug:
-                                print(f"🔗 Created dependency: {parent_agent['name']} → {agent_data['name']}")
 
                     # Also add remaining root items as agents (for nested root spans)
                     # Skip workflow items as they should only be processed once as root items
@@ -634,15 +572,11 @@ class BatchProcessor:
 
                         # Skip if this span_id has already been processed
                         if span_id in processed_span_ids:
-                            if self.config.debug:
-                                print(f"🔍 DEBUG: Skipping duplicate span_id {span_id} in root_items")
                             continue
 
                         # Skip workflow items to prevent duplication
                         item_name = item.get("agent_name") or item.get("function_name") or item.get("name")
                         if item_name in workflow_names:
-                            if self.config.debug:
-                                print(f"🔍 DEBUG: Skipping workflow item {span_id} in root_items (already handled)")
                             continue
 
                         processed_span_ids.add(span_id)
@@ -656,22 +590,19 @@ class BatchProcessor:
                         if agent_name in agent_id_counters[trace_id]:
                             agent_id_counters[trace_id][agent_name] += 1
                             agent_id = f"{span_id}_{agent_id_counters[trace_id][agent_name]}"
-                            if self.config.debug:
-                                print(f"🔍 DEBUG: Created unique agent_id {agent_id} for root item {agent_name} in trace {trace_id}")
                         else:
                             agent_id_counters[trace_id][agent_name] = 0
                             agent_id = span_id
 
                         # Get metadata from the item (which should contain source code)
                         item_metadata = item.get("metadata", {})
-                        logger.info(f"Batch processor: Item metadata keys: {list(item_metadata.keys())}")
 
                         # Check if source code is in the item metadata
                         source_code = item_metadata.get("source_code")
                         if source_code:
-                            logger.info(f"Batch processor: ITEM CONTAINS SOURCE CODE (length: {len(source_code)})")
+                            pass
                         else:
-                            logger.warning(f"Batch processor: ITEM DOES NOT CONTAIN SOURCE CODE")
+                            pass
 
                         agent_data = {
                             "trace_id": trace_id,
@@ -713,13 +644,7 @@ class BatchProcessor:
                         # Build agent ID mapping for dependency creation
                         all_agent_id_map[agent_id] = agent_data  # Use the unique agent_id
 
-                # Debug: print what we found for this trace group
                 workflow_roots = [it for it in root_items if it.get("name") == "linear_workflow" or it.get("agent_name") == "linear_workflow"]
-                if self.config.debug:
-                    if workflow_roots:
-                        print(f"🔍 Found workflow root: {workflow_roots[0].get('name')} with parent_span_id={workflow_roots[0].get('parent_span_id')}")
-                    else:
-                        print(f"🔍 No workflow root found in trace group {tid}, using first root item")
 
                 if not root_items:
                     # Should not happen due to ready selection, but guard
@@ -739,17 +664,15 @@ class BatchProcessor:
                     if child_metadata and "source_code" in child_metadata:
                         # Merge child metadata into item metadata to include source_code
                         item_metadata.update(child_metadata)
-                        logger.info(f"Batch processor: Merged source_code from child span into trace metadata")
                         break  # Only need one source_code, they should be the same for all agents in a workflow
 
-                logger.info(f"Batch processor: Trace metadata keys: {list(item_metadata.keys())}")
 
                 # Check if source code is in the trace metadata
                 source_code = item_metadata.get("source_code")
                 if source_code:
-                    logger.info(f"Batch processor: TRACE CONTAINS SOURCE CODE (length: {len(source_code)})")
+                    pass
                 else:
-                    logger.warning(f"Batch processor: TRACE DOES NOT CONTAIN SOURCE CODE")
+                    pass
 
                 trace_data = {
                     "trace_id": item.get("trace_id"),
@@ -792,9 +715,9 @@ class BatchProcessor:
                 if trace_data.get("raw_data") and trace_data["raw_data"].get("metadata"):
                     metadata = trace_data["raw_data"]["metadata"]
                     if "source_code" in metadata:
-                        logger.info(f"Batch processor: TRACE DATA CONTAINS SOURCE CODE (length: {len(metadata['source_code'])})")
+                        pass
                     else:
-                        logger.warning(f"Batch processor: TRACE DATA DOES NOT CONTAIN SOURCE CODE")
+                        pass
 
                 trace_data = {k: v for k, v in trace_data.items() if v is not None}
                 traces.append(trace_data)
@@ -802,14 +725,13 @@ class BatchProcessor:
                 for child in child_items:
                     # Get metadata from the child span (which should contain source code)
                     child_metadata = child.get("metadata", {})
-                    logger.info(f"Batch processor: Child span metadata keys: {list(child_metadata.keys())}")
 
                     # Check if source code is in the child metadata
                     source_code = child_metadata.get("source_code")
                     if source_code:
-                        logger.info(f"Batch processor: CHILD SPAN CONTAINS SOURCE CODE (length: {len(source_code)})")
+                        pass
                     else:
-                        logger.warning(f"Batch processor: CHILD SPAN DOES NOT CONTAIN SOURCE CODE")
+                        pass
 
                     # Apply framework-specific processing for hierarchical storage
                     processed_child = child
@@ -820,10 +742,10 @@ class BatchProcessor:
                             try:
                                 # Apply framework-specific processing
                                 # Note: This is a simplified approach - in production we'd group by trace first
-                                logger.debug(f"🔍 Processing child span with framework: {framework}")
-                            except Exception as e:
-                                logger.warning(f"Error processing framework {framework}: {e}")
+                                pass
+                            except Exception:
                                 # Continue with original child data
+                                pass
 
                     agent_data = {
                         "trace_id": processed_child.get("trace_id"),
@@ -915,7 +837,6 @@ class BatchProcessor:
         payload = {"traces": traces, "agents": agents, "dependencies": dependencies}
 
         # Debug: Log the actual payload being sent
-        logger.debug(f"🔍 Batch processor: Sending payload with {len(traces)} traces, {len(agents)} agents, and {len(dependencies)} dependencies")
 
         # Log agent ID uniqueness check
         if agents:
@@ -935,50 +856,17 @@ class BatchProcessor:
                         duplicates_found.append(f"trace {trace_id}: agent {agent_id} appears {count} times")
 
             if duplicates_found:
-                logger.warning(f"🔍 DUPLICATE AGENT IDs FOUND: {duplicates_found}")
-                print(f"🔍 WARNING: Duplicate agent IDs found: {duplicates_found}")
-            else:
-                logger.debug("✅ All agent IDs are unique within traces")
-                if self.config.debug:
-                    print("✅ Agent ID uniqueness check passed - no duplicates found")
-
-            # Log agent ID distribution summary
-            if self.config.debug:
-                print(f"🔍 AGENT ID SUMMARY:")
-                for trace_id, agent_counts in trace_agent_counts.items():
-                    print(f"   Trace {trace_id}: {len(agent_counts)} unique agents")
-                    for agent_id, count in agent_counts.items():
-                        print(f"     - {agent_id}: {count}")
-                print(f"🔍 Total agents: {len(agents)}")
-
-        if traces:
-            logger.debug(f"🔍 First trace keys: {list(traces[0].keys())}")
-            logger.debug(f"🔍 First trace raw_data keys: {list(traces[0].get('raw_data', {}).keys()) if traces[0].get('raw_data') else 'No raw_data'}")
-        if agents:
-            logger.debug(f"🔍 First agent keys: {list(agents[0].keys())}")
-            # Print the payload to stderr for debugging
-            if self.config.debug:
-                import sys
-                print(f"🔍 DEBUG: Payload being sent: {payload}", file=sys.stderr)
-        logger.debug(f"🔍 Batch processor: First trace keys: {list(traces[0].keys()) if traces else 'No traces'}")
-        if traces:
-            logger.debug(f"🔍 Batch processor: First trace start_time: {traces[0].get('start_time')}")
-        if agents:
-            logger.debug(f"🔍 Batch processor: First agent keys: {list(agents[0].keys())}")
+            pass
 
         try:
             import requests
         except ImportError:
-            logger.error("'requests' is required to send batches. Install with: pip install requests")
             return
 
         for attempt in range(self.config.max_retries):
             try:
                 resp = requests.post(url, headers=headers, json=payload, timeout=self.config.timeout)
                 if resp.status_code < 400:
-                    logger.debug(f"Successfully sent grouped payload with {len(traces)} traces and {len(agents)} agents")
-                    if self.config.debug:
-                        print(f"🔍 Batch processor: Successfully sent batch of {len(batch)} events")
                     self._consecutive_failures = 0
                     return
                 else:
@@ -986,12 +874,10 @@ class BatchProcessor:
             except Exception as e:
                 self._consecutive_failures += 1
                 if attempt == self.config.max_retries - 1:
-                    logger.error(f"Failed to send batch after {self.config.max_retries} attempts: {e}")
                     # Put items back into pending queue for retry
                     for tid, items in self._current_items_by_trace.items():
                         if items:  # Only put back if there are items
                             self._pending_by_trace[tid] = items
-                            logger.info(f"Put {len(items)} items back into pending queue for trace {tid}")
                     self._failed_batches.append({
                         "batch": batch,
                         "timestamp": time.time(),
@@ -999,7 +885,6 @@ class BatchProcessor:
                     })
                 else:
                     delay = min(60.0, 2 ** attempt + (time.time() % 1))
-                    logger.warning(f"Batch send attempt {attempt + 1} failed: {e}. Retrying in {delay:.1f}s")
                     time.sleep(delay)
 
     # Removed async variant to avoid event loop conflicts
@@ -1026,12 +911,10 @@ class BatchProcessor:
                     self._failed_batches.remove(failed_batch)
                 else:
                     # Give up on this batch
-                    logger.error(f"Giving up on batch after {failed_batch['attempts']} attempts")
                     self._failed_batches.remove(failed_batch)
 
         # Retry batches
         for failed_batch in batches_to_retry:
-            logger.info(f"Retrying failed batch (attempt {failed_batch['attempts'] + 1})")
             failed_batch["attempts"] += 1
             failed_batch["timestamp"] = current_time
 
