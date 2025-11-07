@@ -45,7 +45,7 @@ from .utils import json_loads
 
 # Optional integrations (only import if dependencies are available)
 try:
-    from .langchain import VaqueroCallbackHandler, get_vaquero_handler
+    from .langchain import VaqueroCallbackHandler, get_vaquero_handler, capture_error
     _LANGCHAIN_AVAILABLE = True
 except ImportError:
     _LANGCHAIN_AVAILABLE = False
@@ -186,7 +186,7 @@ __all__ = [
 
 # Add LangChain integration if available
 if _LANGCHAIN_AVAILABLE:
-    __all__.extend(["VaqueroCallbackHandler", "get_vaquero_handler"])
+    __all__.extend(["VaqueroCallbackHandler", "get_vaquero_handler", "capture_error"])
 
 # Add LangGraph integration if available
 if _LANGGRAPH_AVAILABLE:

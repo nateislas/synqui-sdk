@@ -708,8 +708,8 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
             return f"<SerializationError: {type(data).__name__} - {str(e)}>"
 
 
-    def capture_post_processing_error(self, error: Exception, agent_name: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> bool:
-        """Capture a post-processing error that occurred after LangChain execution.
+    def capture_error(self, error: Exception, agent_name: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> bool:
+        """Capture an error that occurred after LangChain execution.
         
         This method finds the most recently closed agent span and creates a child error span.
         It should be called when an error occurs in post-processing code (e.g., JSON parsing).
@@ -816,8 +816,8 @@ def _get_active_handler() -> Optional[VaqueroCallbackHandler]:
         return _handler_registry.handlers[-1]
     return None
 
-def capture_post_processing_error(error: Exception, agent_name: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> bool:
-    """Automatically capture a post-processing error.
+def capture_error(error: Exception, agent_name: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> bool:
+    """Automatically capture an error.
     
     This utility function finds the active callback handler and captures the error.
     It should be called when an error occurs in post-processing code after LangChain execution.
@@ -834,12 +834,12 @@ def capture_post_processing_error(error: Exception, agent_name: Optional[str] = 
         try:
             result = json.loads(data)
         except json.JSONDecodeError as e:
-            vaquero.langchain.capture_post_processing_error(e, agent_name="my_agent")
+            vaquero.langchain.capture_error(e, agent_name="my_agent")
             raise
     """
     handler = _get_active_handler()
     if handler:
-        return handler.capture_post_processing_error(error, agent_name, context)
+        return handler.capture_error(error, agent_name, context)
     return False
 
 def get_vaquero_handler(
