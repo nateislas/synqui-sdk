@@ -1,7 +1,4 @@
-"""Unified trace collector that routes to framework-specific processors.
-
-This module is intentionally silent: no logging or print statements.
-"""
+"""Unified trace collector that routes to framework-specific processors."""
 
 import uuid
 import json
@@ -18,6 +15,25 @@ except ImportError:
 
 if TYPE_CHECKING:
     from .sdk import VaqueroSDK
+
+
+def _get_trace_url(endpoint: str, trace_id: str) -> str:
+    """Get the trace URL based on the endpoint configuration.
+    
+    Args:
+        endpoint: The API endpoint URL
+        trace_id: The trace ID
+        
+    Returns:
+        The full URL to view the trace in the UI
+    """
+    # Check if using cloud (api.vaquero.app) or self-hosted
+    # If endpoint contains api.vaquero.app, use cloud UI
+    if "api.vaquero.app" in endpoint:
+        return f"https://www.vaquero.app/traces/{trace_id}"
+    else:
+        # Self-hosted - use localhost:3000
+        return f"http://localhost:3000/traces/{trace_id}"
 
 
 
@@ -118,8 +134,14 @@ class UnifiedTraceCollector:
     
     def _send_to_database(self, hierarchical_trace) -> None:
         """Send hierarchical trace to database."""
+        # Extract trace info early for logging
+        trace_id = None
+        trace_name = None
+        trace_url = None
         try:
             trace_id = hierarchical_trace.trace_id
+            trace_name = hierarchical_trace.name or trace_id
+            trace_url = _get_trace_url(self.sdk.config.endpoint, trace_id)
             # Calculate trace timing from agents
             start_times = []
             end_times = []
@@ -393,7 +415,10 @@ class UnifiedTraceCollector:
             self._send_batch_to_api(batch_data)
             
         except Exception:
-            pass
+            # Log trace URL even if there's an error
+            if trace_id and trace_url:
+                print(f"🤠 Vaquero: Trace '{trace_name}' prepared")
+                print(f"🤠 Vaquero: View trace at {trace_url}")
     
     def _send_agent_to_api(self, agent_data: dict) -> None:
         """Send individual agent to API."""
@@ -413,8 +438,22 @@ class UnifiedTraceCollector:
     
     def _send_batch_to_api(self, batch_data: dict) -> None:
         """Send batch trace data to API."""
+        # Extract trace info for logging before the try block
+        traces_to_log = []
+        if batch_data.get("traces"):
+            for trace in batch_data["traces"]:
+                trace_id = trace.get("trace_id")
+                if trace_id:
+                    trace_url = _get_trace_url(self.sdk.config.endpoint, trace_id)
+                    trace_name = trace.get("name") or trace.get("trace_id", "trace")
+                    traces_to_log.append((trace_id, trace_name, trace_url))
+        
         try:
             if not REQUESTS_AVAILABLE:
+                # Still log the trace URL even if requests isn't available
+                for trace_id, trace_name, trace_url in traces_to_log:
+                    print(f"🤠 Vaquero: Trace '{trace_name}' prepared (requests library not available)")
+                    print(f"🤠 Vaquero: View trace at {trace_url}")
                 return
             
             serializable_data = json_serializable(batch_data)
@@ -433,9 +472,24 @@ class UnifiedTraceCollector:
             if project_id:
                 headers["X-Project-ID"] = project_id
 
-            requests.post(url, json=serializable_data, headers=headers, timeout=30)
-        except Exception:
-            pass
+            response = requests.post(url, json=serializable_data, headers=headers, timeout=30)
+            
+            # Log trace links for successfully sent traces
+            # 200 = OK, 201 = Created, 202 = Accepted (all are success codes)
+            if response.status_code in (200, 201, 202):
+                for trace_id, trace_name, trace_url in traces_to_log:
+                    print(f"🤠 Vaquero: Trace '{trace_name}' sent successfully")
+                    print(f"🤠 Vaquero: View trace at {trace_url}")
+            else:
+                # Log even on error, but indicate it may have failed
+                for trace_id, trace_name, trace_url in traces_to_log:
+                    print(f"🤠 Vaquero: Trace '{trace_name}' sent (status: {response.status_code})")
+                    print(f"🤠 Vaquero: View trace at {trace_url}")
+        except Exception as e:
+            # Log trace URLs even if there's an error
+            for trace_id, trace_name, trace_url in traces_to_log:
+                print(f"🤠 Vaquero: Trace '{trace_name}' prepared")
+                print(f"🤠 Vaquero: View trace at {trace_url}")
     
     def _get_user_id(self) -> Optional[str]:
         """Get user ID and project ID from whoami endpoint (cached)."""

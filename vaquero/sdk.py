@@ -48,6 +48,9 @@ class VaqueroSDK:
         self._auto_instrumentation: Optional[AutoInstrumentationEngine] = None
         self._first_trace_tracked = False
 
+        # Log initialization
+        print("🤠 Vaquero: Initializing SDK...")
+
         # Initialize analytics (framework detection, SDK version reporting)
         self._analytics = initialize_analytics(
             api_key=config.api_key,
