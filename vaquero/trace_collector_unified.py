@@ -493,23 +493,40 @@ class UnifiedTraceCollector:
             if project_id:
                 headers["X-Project-ID"] = project_id
 
+            # Log batch details before sending
+            trace_count = len(batch_data.get("traces", []))
+            agent_count = len(batch_data.get("agents", []))
+            print(f"🤠 Vaquero SDK: Sending batch to {url} - {trace_count} trace(s), {agent_count} agent(s)")
+            if project_id:
+                print(f"🤠 Vaquero SDK: Project ID: {project_id}")
+            
             response = requests.post(url, json=serializable_data, headers=headers, timeout=30)
+            
+            # Log HTTP response details
+            print(f"🤠 Vaquero SDK: HTTP Response - Status: {response.status_code}")
+            if response.status_code not in (200, 201, 202):
+                try:
+                    error_detail = response.text[:500] if response.text else "No error message"
+                    print(f"🤠 Vaquero SDK: Error response: {error_detail}")
+                except Exception:
+                    pass
             
             # Log trace links for successfully sent traces
             # 200 = OK, 201 = Created, 202 = Accepted (all are success codes)
             if response.status_code in (200, 201, 202):
                 for trace_id, trace_name, trace_url in traces_to_log:
-                    print(f"🤠 Vaquero: Trace '{trace_name}' sent successfully")
+                    print(f"🤠 Vaquero: Trace '{trace_name}' sent successfully (trace_id: {trace_id})")
                     print(f"🤠 Vaquero: View trace at {trace_url}")
             else:
                 # Log even on error, but indicate it may have failed
                 for trace_id, trace_name, trace_url in traces_to_log:
-                    print(f"🤠 Vaquero: Trace '{trace_name}' sent (status: {response.status_code})")
+                    print(f"🤠 Vaquero: Trace '{trace_name}' sent (status: {response.status_code}, trace_id: {trace_id})")
                     print(f"🤠 Vaquero: View trace at {trace_url}")
         except Exception as e:
             # Log trace URLs even if there's an error
+            print(f"🤠 Vaquero SDK: Error sending batch: {e}")
             for trace_id, trace_name, trace_url in traces_to_log:
-                print(f"🤠 Vaquero: Trace '{trace_name}' prepared")
+                print(f"🤠 Vaquero: Trace '{trace_name}' prepared (trace_id: {trace_id})")
                 print(f"🤠 Vaquero: View trace at {trace_url}")
     
     def _get_user_id(self) -> Optional[str]:
