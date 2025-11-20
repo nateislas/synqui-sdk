@@ -49,10 +49,8 @@ def process_data(data):
 
 ---
 
-## 📚 Documentation
+## 📚 Resources
 
-- **[🚀 Getting Started](docs/GETTING_STARTED.md)** - Complete guide to install, configure, and start tracing
-- **[📖 API Reference](docs/API_REFERENCE.md)** - Detailed API documentation and configuration options
 - **[💡 Examples](examples/)** - Real-world examples and integration patterns
 
 ---
@@ -296,15 +294,10 @@ make lint          # Code quality
 ```
 
 ### 📝 Contributing
-Join our community! See [Contributing Guide](docs/CONTRIBUTING.md)
+Join our community! Contributions are welcome. Please open an issue or submit a pull request.
 
 ---
 
-## 📖 Resources
-
-- **[🚀 Getting Started](docs/GETTING_STARTED.md)** - Complete installation and setup guide
-- **[📚 API Reference](docs/API_REFERENCE.md)** - Detailed API documentation
-- **[💡 Examples](examples/)** - Real-world usage patterns
 
 ---
 

@@ -80,7 +80,7 @@ Ensure all required files are in place:
 - ✅ `MANIFEST.in` - Files to include in distribution (already configured)
 - ✅ `LICENSE` - License file (MIT License exists in root)
 - ✅ `README.md` - Package documentation (already exists)
-- ✅ `CHANGELOG.md` - Change history (exists in `docs/CHANGELOG.md`)
+- ✅ `CHANGELOG.md` - Change history (exists in root directory)
 
 **Note**: The `LICENSE` file is in the project root. The `MANIFEST.in` should include it. Let's verify:
 
@@ -107,7 +107,7 @@ Follow [Semantic Versioning](https://semver.org/):
 
 ### 3. Update CHANGELOG
 
-Update `docs/CHANGELOG.md` with your changes:
+Update `CHANGELOG.md` with your changes:
 
 ```markdown
 ## [0.1.1] - 2025-01-XX
