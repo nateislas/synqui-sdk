@@ -52,6 +52,7 @@ def process_data(data):
 ## 📚 Resources
 
 - **[💡 Examples](examples/)** - Real-world examples and integration patterns
+- **[🎯 Demo: Article Explainer](demos/article-explainer/)** - Full-featured demo application using LangGraph and Vaquero
 
 ---
 
