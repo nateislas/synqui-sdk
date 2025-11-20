@@ -1,8 +1,8 @@
-# 🚀 Vaquero Python SDK
+# 🤠 Vaquero Python SDK
 
 <div align="center">
-  <h3>Comprehensive observability and tracing for AI agents and applications</h3>
-  <p><strong>Zero-config tracing</strong> • <strong>Auto-instrumentation</strong> • <strong>Production-ready</strong></p>
+  <h3>System intelligence for multi-agent AI</h3>
+  <p><strong>Architecture extraction</strong> • <strong>Agent coordination</strong> • <strong>Performance insights</strong></p>
 
   [![PyPI version](https://badge.fury.io/py/vaquero-sdk.svg)](https://badge.fury.io/py/vaquero-sdk)
   [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -18,20 +18,39 @@
 pip install vaquero-sdk
 ```
 
-### 2. Configure
+### 2. Get Your API Key
+1. Go to the [Vaquero Dashboard](https://www.vaquero.app)
+2. Create a new project (or select an existing one)
+3. Navigate to the project's **Settings** page
+4. Click **Create Project API Key** (keys start with `cf_`)
+
+### 3. Initialize Vaquero
 ```python
 import vaquero
+import os
 
-vaquero.init(api_key="your-api-key")
+vaquero.init(
+    project_name="my-project",
+    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
+    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
+)
 ```
 
-### 3. Trace
+### 4. Integrate with LangChain
 ```python
-@vaquero.trace("my_agent")
-def process_data(data):
-    return {"result": data}
+from vaquero.langchain import get_vaquero_handler
+from langchain_openai import ChatOpenAI
 
-# Done! ✨
+# Create handler
+handler = get_vaquero_handler(
+    parent_context={"pipeline": "demo"}
+)
+
+# Use with LLM
+llm = ChatOpenAI(callbacks=[handler])
+llm.invoke("Hello, world!")
+
+# Done! ✨ View your traces at https://www.vaquero.app
 ```
 
 ---
@@ -40,12 +59,12 @@ def process_data(data):
 
 | Feature | Description |
 |---------|-------------|
-| 🔍 **Automatic Tracing** | One decorator instruments your entire function with comprehensive observability |
-| 🤖 **LLM Auto-Instrumentation** | Automatically captures OpenAI, Anthropic, and other LLM calls with zero code changes |
-| ⚡ **Async-First** | Full support for async/await patterns with intelligent batching |
-| 📊 **Performance Monitoring** | Built-in profiling, memory tracking, and performance insights |
-| 🛡️ **Production Ready** | Circuit breakers, retry logic, and enterprise-grade reliability |
-| 🎛️ **Zero Configuration** | Environment variables and sensible defaults get you started instantly |
+| 🧠 **Automatic Failure Analysis** | AI-powered root cause analysis—know what broke and how to fix it instantly |
+| 📊 **Architecture Performance Tracking** | Track architecture evolution with real data. Compare versions and know which configurations work before shipping |
+| 🔧 **Development & Production Modes** | Debug fast in development. Monitor reliably in production. One platform for both |
+| 🤖 **MCP Integration** | Your agents fix themselves. Connect via MCP to query insights, identify issues, and implement fixes automatically |
+| 📈 **Performance Monitoring** | Track success rates, latency, and costs over time. Get alerted when patterns start degrading |
+| 🏗️ **System Architecture Visualization** | Automatically extract and visualize agent relationships and coordination patterns |
 
 ---
 
@@ -53,6 +72,7 @@ def process_data(data):
 
 - **[💡 Examples](examples/)** - Real-world examples and integration patterns
 - **[🎯 Demo: Article Explainer](demos/article-explainer/)** - Full-featured demo application using LangGraph and Vaquero
+- **[📖 Documentation](https://www.vaquero.app/docs)** - Complete API reference and guides
 
 ---
 
@@ -62,6 +82,8 @@ def process_data(data):
 ```bash
 pip install vaquero-sdk
 ```
+
+> **Note:** The package is installed as `vaquero-sdk`, but imported in Python as `import vaquero`.
 
 ### 🔨 From Source
 ```bash
@@ -79,226 +101,337 @@ pip install vaquero-sdk[all]
 
 ## 💻 Code Examples
 
-### Basic Function Tracing
+### LangChain Integration
+
+**Basic LLM Usage**
 ```python
 import vaquero
+import os
+from vaquero.langchain import get_vaquero_handler
+from langchain_openai import ChatOpenAI
 
-# Configure once
-vaquero.init(api_key="your-key")
-
-@vaquero.trace("data_processor")
-def process_data(data):
-    """Process some data."""
-    result = {"processed": len(data), "items": data}
-    return result
-
-# Your function is now automatically traced!
-result = process_data(["item1", "item2", "item3"])
-```
-
-### Async Support
-```python
-@vaquero.trace("api_client")
-async def fetch_data(url):
-    """Async data fetching."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        return response.json()
-
-# Works seamlessly with async/await
-result = await fetch_data("https://api.example.com/data")
-```
-
-### Manual Span Creation
-```python
-async with vaquero.span("complex_operation") as span:
-    span.set_attribute("operation_type", "batch_processing")
-    span.set_attribute("batch_size", len(data))
-
-    # Your complex logic here
-    result = await process_batch(data)
-
-    span.set_attribute("result_count", len(result))
-```
-
-### Auto-Instrumentation (Zero Code Changes!)
-```python
-# Enable LLM auto-instrumentation
-vaquero.init(api_key="your-key", auto_instrument_llm=True)
-
-# Now any LLM calls are automatically traced!
-import openai
-
-client = openai.OpenAI(api_key="your-key")
-response = client.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "Hello!"}]
+# Initialize Vaquero
+vaquero.init(
+    project_name="langchain-demo",
+    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY")
 )
-# System prompts, tokens, timing all captured automatically! ✨
+
+# Create handler with context
+handler = get_vaquero_handler(
+    parent_context={"pipeline": "demo"}
+)
+
+# Use with LLM
+llm = ChatOpenAI(callbacks=[handler])
+llm.invoke("Hello")
+```
+
+**LangChain Agents**
+```python
+from langchain.agents import initialize_agent
+
+# Create handler
+handler = get_vaquero_handler(
+    parent_context={"agent_type": "data_processing"}
+)
+
+# Initialize agent with handler
+agent = initialize_agent(
+    tools, llm, agent="zero-shot-react-description", callbacks=[handler]
+)
+agent.run("task")
+```
+
+**LangChain Chains**
+```python
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+
+# Create handler
+handler = get_vaquero_handler()
+
+# Use with chain
+chain = LLMChain(llm=llm, prompt=prompt, callbacks=[handler])
+chain.run("input")
+```
+
+### LangGraph Integration
+
+**Basic Workflow**
+```python
+import vaquero
+from vaquero.langgraph import VaqueroLangGraphHandler
+
+# 1. Initialize Vaquero
+vaquero.init(
+    project_name="my-agent",
+    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY")
+)
+
+# 2. Start a session
+session = vaquero.start_chat_session(
+    name="chat-session-1",
+    session_type="chat",
+    timeout_minutes=30,
+    metadata={"user_id": "123"}
+)
+
+# 3. Create the handler
+handler = VaqueroLangGraphHandler(session=session)
+
+# 4. Register graph architecture (recommended)
+handler.set_graph_architecture(
+    graph=app.get_graph(),
+    graph_name="MyAgent"
+)
+
+# 5. Invoke with handler
+config = {
+    "callbacks": [handler],
+    "configurable": {"vaquero_handler": handler}
+}
+app.invoke(inputs, config=config)
+```
+
+**Complete Example (from Article Explainer)**
+```python
+import vaquero
+import os
+from vaquero.langgraph import VaqueroLangGraphHandler
+from langchain_core.callbacks import UsageMetadataCallbackHandler
+
+# Initialize
+vaquero.init(
+    project_name=os.getenv('VAQUERO_PROJECT_NAME', "article-explainer"),
+    project_api_key=os.getenv('VAQUERO_PROJECT_API_KEY'),
+    environment=os.getenv('VAQUERO_ENVIRONMENT', 'development')
+)
+
+# Start session for document processing
+session = vaquero.start_chat_session(
+    name=f"pdf_chat_{document_name}",
+    session_type="chat",
+    timeout_minutes=30,
+    metadata={
+        "document_name": document_name,
+        "document_type": "pdf"
+    }
+)
+
+# Create handler with session
+handler = VaqueroLangGraphHandler(session=session)
+
+# Register graph architecture
+handler.set_graph_architecture(
+    graph=app.get_graph(),
+    graph_name="ArticleExplainer"
+)
+
+# Invoke with multiple callbacks
+usage_handler = UsageMetadataCallbackHandler()
+config = {
+    "callbacks": [handler, usage_handler],
+    "configurable": {"vaquero_handler": handler}
+}
+response_state = app.invoke(agent_state, config=config)
+```
+
+### Data Processing Pipeline Example
+
+**Using LangChain Agents with Vaquero**
+```python
+import vaquero
+import os
+from vaquero.langchain import get_vaquero_handler
+
+# Initialize
+vaquero.init(
+    project_name="Simple Workflow",
+    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY", ""),
+    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
+)
+
+# Create handler for pipeline
+handler = get_vaquero_handler(
+    parent_context={"pipeline": "data_processing"}
+)
+
+# Use with agents
+callbacks = [handler]
+agents = create_pipeline_agents(callbacks=callbacks)
+
+# Agents automatically trace their execution
+result = agents["data_processor"].invoke({"input": "Process this data..."})
 ```
 
 ---
 
 ## 🎨 Advanced Usage
 
-### Manual Span Creation
+### Session Management
 
-**Sync & Async Support**
+**Creating and Managing Sessions**
 ```python
-# Same API works for both sync and async!
-with vaquero.span("custom_operation") as span:
-    span.set_attribute("user_id", "12345")
-    result = expensive_computation()
-    span.set_attribute("result_size", len(result))
+# Start a new chat session
+session = vaquero.start_chat_session(
+    name="user-123-session",
+    session_type="chat",
+    timeout_minutes=30,
+    max_duration_minutes=240,
+    metadata={"user_id": "123", "environment": "production"}
+)
 
-async with vaquero.span("async_operation") as span:
-    span.set_attribute("operation_type", "ml_inference")
-    result = await ml_model.predict(data)
-    span.set_attribute("confidence", result.confidence)
+# Session automatically groups related traces
+# Use the same session for multiple invocations
+handler = VaqueroLangGraphHandler(session=session)
 ```
 
-### Nested Tracing
-
-**Parent-Child Relationships**
+**Session Lifecycle**
 ```python
-@vaquero.trace("main_processor")
-def main_process(data):
-    # Parent span automatically created
-    preprocessed = preprocess_data(data)
+# Sessions automatically timeout after inactivity
+# Manually end a session if needed
+if session:
+    session.end_session("user_logout")
+```
 
-    # Child span with context
-    with vaquero.span("validation") as span:
-        span.set_attribute("data_size", len(preprocessed))
-        validate_data(preprocessed)
+### Graph Architecture Registration
 
-    return postprocess_data(preprocessed)
+**Capture Your Agent Structure**
+```python
+# Register graph architecture for visualization
+handler.set_graph_architecture(
+    graph=app.get_graph(),
+    graph_name="CustomerSupportAgent"
+)
+
+# This enables:
+# - Automatic node/edge extraction
+# - Architecture visualization in dashboard
+# - Version tracking of graph changes
 ```
 
 ### Custom Configuration
 
 **Advanced Setup**
 ```python
-from vaquero import SDKConfig
+import vaquero
+import os
 
-config = SDKConfig(
-    api_key="your-api-key",
-    project_id="your-project-id",  # Optional - auto-provisioned
-    batch_size=100,        # Optimize for your workload
-    flush_interval=5.0,    # Balance latency vs efficiency
-    max_retries=3,         # Handle transient failures
-    capture_inputs=True,   # Privacy vs debugging
-    tags={"team": "ml", "env": "prod"}  # Global metadata
+vaquero.init(
+    project_name="my-project",
+    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
+    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
 )
-
-vaquero.init(config=config)
 ```
 
 ### Environment Variables
 
 **Configuration via Environment**
 ```bash
-VAQUERO_API_KEY=your-key
-VAQUERO_PROJECT_ID=your-project
-VAQUERO_ENDPOINT=https://api.vaquero.com
-VAQUERO_BATCH_SIZE=50
-VAQUERO_AUTO_INSTRUMENT_LLM=true
+VAQUERO_PROJECT_API_KEY=cf_your-api-key
+VAQUERO_PROJECT_NAME=my-project
+VAQUERO_ENVIRONMENT=development
 ```
 
 ```python
 import vaquero
-vaquero.init()  # Loads from env vars
+import os
+
+vaquero.init(
+    project_name=os.getenv("VAQUERO_PROJECT_NAME"),
+    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
+    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
+)
 ```
 
-### Error Handling & Resilience
-
-**Automatic Error Capture**
+### Production Configuration
 ```python
-@vaquero.trace("risky_operation")
-def risky_operation(data):
-    if not data:
-        raise ValueError("Data cannot be empty")
-    return process(data)
+import vaquero
+import os
 
-try:
-    result = risky_operation([])
-except ValueError as e:
-    # Error automatically captured with full context
-    print(f"Operation failed: {e}")
-    # Stack trace, function args, timing all preserved
+vaquero.init(
+    project_name="production-app",
+    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
+    environment="production"
+)
 ```
 
-### Performance Monitoring
-
-**Built-in Observability**
-```python
-# Check SDK health
-stats = vaquero.get_default_sdk().get_stats()
-print(f"Traces: {stats['traces_sent']}")
-print(f"Memory: {stats['memory_usage_mb']} MB")
-
-# Manual control
-vaquero.flush()  # Force send pending traces
-
-# Get current context
-from vaquero import get_current_span
-span = get_current_span()
-span.set_attribute("custom_metric", value)
-```
+In production, traces are batched and sent asynchronously to avoid blocking your application.
 
 ---
 
 ## 🔧 Configuration Reference
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `api_key` | string | Required | Your Vaquero API key |
-| `project_id` | string | Optional | Your project identifier (auto-provisioned) |
-| `batch_size` | int | 100 | Traces per batch |
-| `flush_interval` | float | 5.0 | Seconds between flushes |
-| `auto_instrument_llm` | bool | true | Auto-capture LLM calls |
-| `capture_system_prompts` | bool | true | Capture LLM system prompts |
-| `capture_code` | bool | true | Capture source code for analysis |
-| `mode` | string | "development" | Operating mode ("development" or "production") |
+### Initialization Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `project_api_key` | `str` | **Yes** | - | Your Vaquero API key (starts with `cf_`) |
+| `project_name` | `str` | No | `None` | Project name (recommended, auto-resolves project ID) |
+| `project_id` | `str` | No | `None` | Project ID (used if project_name not provided) |
+| `endpoint` | `str` | No | `"https://api.vaquero.app"` | Vaquero API endpoint |
+| `environment` | `str` | No | `"development"` | Environment: `"development"`, `"staging"`, or `"production"` |
+
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VAQUERO_PROJECT_API_KEY` | Your project API key | `cf_...` |
+| `VAQUERO_PROJECT_NAME` | Name of your project | `my-project` |
+| `VAQUERO_PROJECT_ID` | Project ID (optional) | `uuid-here` |
+| `VAQUERO_ENVIRONMENT` | Environment name | `development`, `staging`, or `production` |
+
+### Environment-Specific Settings
+
+The SDK automatically adjusts batch sizes and flush intervals based on environment:
+
+```python
+# Development (faster feedback)
+vaquero.init(
+    project_api_key="key",
+    project_name="my-app",
+    environment="development"
+)
+# → batch_size=10, flush_interval=2.0s
+
+# Staging (balanced)
+vaquero.init(
+    project_api_key="key",
+    project_name="my-app",
+    environment="staging"
+)
+# → batch_size=50, flush_interval=3.0s
+
+# Production (optimized for throughput)
+vaquero.init(
+    project_api_key="key",
+    project_name="my-app",
+    environment="production"
+)
+# → batch_size=100, flush_interval=5.0s
+```
 
 ---
 
 ## 🚨 Best Practices
 
 ### ✅ Do
-- **Use descriptive agent names** - `@vaquero.trace("user_authentication_validator")`
-- **Add meaningful attributes** - `span.set_attribute("user_id", user_id)`
+- **Use project names** - `vaquero.init(project_api_key="key", project_name="my-app")`
+- **Register graph architecture** - `handler.set_graph_architecture()` for LangGraph workflows
+- **Start chat sessions** - Use `start_chat_session()` for conversational agents
+- **Add meaningful context** - Pass `parent_context` to handlers for better trace organization
 - **Handle errors gracefully** - SDK captures exceptions automatically
-- **Use async context managers** - `async with vaquero.span("operation"):`
 
 ### ❌ Avoid
-- **Generic names** - `@vaquero.trace("validator")` (too vague)
-- **Sensitive data** - Don't log passwords, keys, or PII
-- **Blocking operations** - Use async patterns for I/O
-- **Manual timing** - SDK handles timing automatically
+- **Sensitive data** - Don't log passwords, keys, or PII in attributes
+- **Forgetting to pass handlers** - Always include handlers in callback lists
+- **Blocking operations in async code** - Use proper async patterns
 
 ---
 
-## 🛠️ Development
+## 📝 Contributing
 
-### 🏗️ Setup
-```bash
-git clone https://github.com/nateislas/vaquero-sdk.git
-cd vaquero-sdk
-pip install -e ".[dev]"
-```
-
-### 🧪 Testing
-```bash
-make test          # Run all tests
-make test-cov      # With coverage
-make lint          # Code quality
-```
-
-### 📝 Contributing
-Join our community! Contributions are welcome. Please open an issue or submit a pull request.
-
----
-
+Join our community! See [Contributing Guide](CONTRIBUTING.md)
 
 ---
 
