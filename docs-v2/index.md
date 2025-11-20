@@ -147,7 +147,7 @@ response = client.chat.completions.create(...)
 
 ### Community
 - **[Discord Community](https://discord.gg/vaquero)** - Get help and share experiences
-- **[GitHub Issues](https://github.com/vaquero/vaquero-python/issues)** - Report bugs and request features
+- **[GitHub Issues](https://github.com/nateislas/vaquero-sdk/issues)** - Report bugs and request features
 
 ### Support
 - **Email**: support@vaquero.app

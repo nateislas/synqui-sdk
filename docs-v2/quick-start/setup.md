@@ -11,7 +11,7 @@ pip install vaquero-sdk
 
 ### Option 2: From Source
 ```bash
-git clone https://github.com/vaquero/vaquero-python.git
+git clone https://github.com/nateislas/vaquero-sdk.git
 cd vaquero-python
 pip install -e .
 ```

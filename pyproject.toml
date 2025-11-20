@@ -54,11 +54,11 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nateislas/Vaquero"
-Documentation = "https://github.com/nateislas/Vaquero#readme"
-Repository = "https://github.com/nateislas/Vaquero"
-Changelog = "https://github.com/nateislas/Vaquero/blob/main/sdk/CHANGELOG.md"
-"Bug Reports" = "https://github.com/nateislas/Vaquero/issues"
+Homepage = "https://github.com/nateislas/vaquero-sdk"
+Documentation = "https://github.com/nateislas/vaquero-sdk#readme"
+Repository = "https://github.com/nateislas/vaquero-sdk"
+Changelog = "https://github.com/nateislas/vaquero-sdk/blob/main/CHANGELOG.md"
+"Bug Reports" = "https://github.com/nateislas/vaquero-sdk/issues"
 
 [tool.setuptools.packages.find]
 include = ["vaquero*"]

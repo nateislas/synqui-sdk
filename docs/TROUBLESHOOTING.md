@@ -498,14 +498,14 @@ def sampled_function():
 ## Getting Help
 
 ### Community Resources
-- **GitHub Issues**: [Report bugs and request features](https://github.com/vaquero/vaquero-python/issues)
-- **Discussions**: [Community discussions and Q&A](https://github.com/vaquero/vaquero-python/discussions)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/nateislas/vaquero-sdk/issues)
+- **Discussions**: [Community discussions and Q&A](https://github.com/nateislas/vaquero-sdk/discussions)
 - **Discord**: Join our [Discord community](https://discord.gg/vaquero)
 
 ### Support Channels
 - **Email**: support@vaquero.app
 - **Documentation**: [Complete documentation](https://docs.vaquero.com)
-- **Examples**: [Usage examples](https://github.com/vaquero/vaquero-python/tree/main/examples)
+- **Examples**: [Usage examples](https://github.com/nateislas/vaquero-sdk/tree/main/examples)
 
 ### Issue Reporting
 When reporting issues, please include:

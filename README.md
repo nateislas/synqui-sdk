@@ -166,8 +166,8 @@ def process_data(data):
 
   <div class="option">
     <h4>🔨 From Source</h4>
-    <pre class="code-block">git clone https://github.com/vaquero/vaquero-python.git
-cd vaquero-python
+    <pre class="code-block">git clone https://github.com/nateislas/vaquero-sdk.git
+cd vaquero-sdk
 pip install -e .</pre>
   </div>
 

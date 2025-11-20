@@ -142,8 +142,8 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## Support
 
 - **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
-- **GitHub**: [https://github.com/vaquero/vaquero-python](https://github.com/vaquero/vaquero-python)
-- **Issues**: [https://github.com/vaquero/vaquero-python/issues](https://github.com/vaquero/vaquero-python/issues)
+- **GitHub**: [https://github.com/nateislas/vaquero-sdk](https://github.com/nateislas/vaquero-sdk)
+- **Issues**: [https://github.com/nateislas/vaquero-sdk/issues](https://github.com/nateislas/vaquero-sdk/issues)
 - **Email**: support@vaquero.app
 
 ## License

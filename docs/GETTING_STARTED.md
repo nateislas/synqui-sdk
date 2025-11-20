@@ -49,7 +49,7 @@ pip install vaquero-sdk
 ### From Source
 
 ```bash
-git clone https://github.com/vaquero/vaquero-python.git
+git clone https://github.com/nateislas/vaquero-sdk.git
 cd vaquero-python
 pip install -e .
 ```
@@ -563,8 +563,8 @@ Guidelines for consistent, high-quality SDK usage.
 ## Support
 
 - **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
-- **GitHub**: [https://github.com/vaquero/vaquero-python](https://github.com/vaquero/vaquero-python)
-- **Issues**: [https://github.com/vaquero/vaquero-python/issues](https://github.com/vaquero/vaquero-python/issues)
+- **GitHub**: [https://github.com/nateislas/vaquero-sdk](https://github.com/nateislas/vaquero-sdk)
+- **Issues**: [https://github.com/nateislas/vaquero-sdk/issues](https://github.com/nateislas/vaquero-sdk/issues)
 - **Email**: support@vaquero.app
 
 ## License

@@ -38,7 +38,7 @@ This project adheres to a code of conduct. By participating, you are expected to
 
 3. Add the upstream repository:
    ```bash
-   git remote add upstream https://github.com/vaquero/vaquero-python.git
+   git remote add upstream https://github.com/nateislas/vaquero-sdk.git
    ```
 
 ## Development Setup
@@ -381,8 +381,8 @@ Recommended plugins:
 ### Resources
 
 - **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
-- **GitHub Issues**: [https://github.com/vaquero/vaquero-python/issues](https://github.com/vaquero/vaquero-python/issues)
-- **Discussions**: [https://github.com/vaquero/vaquero-python/discussions](https://github.com/vaquero/vaquero-python/discussions)
+- **GitHub Issues**: [https://github.com/nateislas/vaquero-sdk/issues](https://github.com/nateislas/vaquero-sdk/issues)
+- **Discussions**: [https://github.com/nateislas/vaquero-sdk/discussions](https://github.com/nateislas/vaquero-sdk/discussions)
 - **Email**: dev@vaquero.com
 
 ### Community
