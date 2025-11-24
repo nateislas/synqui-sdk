@@ -1,4 +1,4 @@
-"""Convenience decorators for the Vaquero SDK."""
+"""Convenience decorators for the Synqui SDK."""
 
 from typing import Callable
 
@@ -17,11 +17,11 @@ def trace(agent_name: str, **kwargs) -> Callable:
         Decorated function
 
     Example:
-        import vaquero
+        import synqui
 
-        vaquero.configure(api_key="...", project_id="...")
+        synqui.configure(api_key="...", project_id="...")
 
-        @vaquero.trace("data_processor")
+        @synqui.trace("data_processor")
         def process_data(data):
             \"\"\"
             Process data with expected performance of 1-5 seconds.

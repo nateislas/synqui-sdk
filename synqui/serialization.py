@@ -1,4 +1,4 @@
-"""Safe serialization utilities for the Vaquero SDK."""
+"""Safe serialization utilities for the Synqui SDK."""
 
 import json
 from datetime import datetime, date

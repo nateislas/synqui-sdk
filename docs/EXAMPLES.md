@@ -4,19 +4,19 @@
 
 ### Basic LLM Usage
 ```python
-import vaquero
+import synqui
 import os
-from vaquero.langchain import get_vaquero_handler
+from synqui.langchain import get_synqui_handler
 from langchain_openai import ChatOpenAI
 
-# Initialize Vaquero
-vaquero.init(
+# Initialize Synqui
+synqui.init(
     project_name="langchain-demo",
-    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY")
+    project_api_key=os.getenv("SYNQUI_PROJECT_API_KEY")
 )
 
 # Create handler with context
-handler = get_vaquero_handler(
+handler = get_synqui_handler(
     parent_context={"pipeline": "demo"}
 )
 
@@ -30,7 +30,7 @@ llm.invoke("Hello")
 from langchain.agents import initialize_agent
 
 # Create handler
-handler = get_vaquero_handler(
+handler = get_synqui_handler(
     parent_context={"agent_type": "data_processing"}
 )
 
@@ -47,7 +47,7 @@ from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 
 # Create handler
-handler = get_vaquero_handler()
+handler = get_synqui_handler()
 
 # Use with chain
 chain = LLMChain(llm=llm, prompt=prompt, callbacks=[handler])
@@ -58,18 +58,18 @@ chain.run("input")
 
 ### Basic Workflow
 ```python
-import vaquero
+import synqui
 import os
-from vaquero.langgraph import VaqueroLangGraphHandler
+from synqui.langgraph import SynquiLangGraphHandler
 
-# 1. Initialize Vaquero
-vaquero.init(
+# 1. Initialize Synqui
+synqui.init(
     project_name="my-agent",
-    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY")
+    project_api_key=os.getenv("SYNQUI_PROJECT_API_KEY")
 )
 
 # 2. Start a session
-session = vaquero.start_chat_session(
+session = synqui.start_chat_session(
     name="chat-session-1",
     session_type="chat",
     timeout_minutes=30,
@@ -77,7 +77,7 @@ session = vaquero.start_chat_session(
 )
 
 # 3. Create the handler
-handler = VaqueroLangGraphHandler(session=session)
+handler = SynquiLangGraphHandler(session=session)
 
 # 4. Register graph architecture (recommended)
 handler.set_graph_architecture(
@@ -88,27 +88,27 @@ handler.set_graph_architecture(
 # 5. Invoke with handler
 config = {
     "callbacks": [handler],
-    "configurable": {"vaquero_handler": handler}
+    "configurable": {"synqui_handler": handler}
 }
 app.invoke(inputs, config=config)
 ```
 
 ### Complete Example (from Article Explainer)
 ```python
-import vaquero
+import synqui
 import os
-from vaquero.langgraph import VaqueroLangGraphHandler
+from synqui.langgraph import SynquiLangGraphHandler
 from langchain_core.callbacks import UsageMetadataCallbackHandler
 
 # Initialize
-vaquero.init(
-    project_name=os.getenv('VAQUERO_PROJECT_NAME', "article-explainer"),
-    project_api_key=os.getenv('VAQUERO_PROJECT_API_KEY'),
-    environment=os.getenv('VAQUERO_ENVIRONMENT', 'development')
+synqui.init(
+    project_name=os.getenv('SYNQUI_PROJECT_NAME', "article-explainer"),
+    project_api_key=os.getenv('SYNQUI_PROJECT_API_KEY'),
+    environment=os.getenv('SYNQUI_ENVIRONMENT', 'development')
 )
 
 # Start session for document processing
-session = vaquero.start_chat_session(
+session = synqui.start_chat_session(
     name=f"pdf_chat_{document_name}",
     session_type="chat",
     timeout_minutes=30,
@@ -119,7 +119,7 @@ session = vaquero.start_chat_session(
 )
 
 # Create handler with session
-handler = VaqueroLangGraphHandler(session=session)
+handler = SynquiLangGraphHandler(session=session)
 
 # Register graph architecture
 handler.set_graph_architecture(
@@ -131,28 +131,28 @@ handler.set_graph_architecture(
 usage_handler = UsageMetadataCallbackHandler()
 config = {
     "callbacks": [handler, usage_handler],
-    "configurable": {"vaquero_handler": handler}
+    "configurable": {"synqui_handler": handler}
 }
 response_state = app.invoke(agent_state, config=config)
 ```
 
 ## Data Processing Pipeline Example
 
-### Using LangChain Agents with Vaquero
+### Using LangChain Agents with Synqui
 ```python
-import vaquero
+import synqui
 import os
-from vaquero.langchain import get_vaquero_handler
+from synqui.langchain import get_synqui_handler
 
 # Initialize
-vaquero.init(
+synqui.init(
     project_name="Simple Workflow",
-    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY", ""),
-    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
+    project_api_key=os.getenv("SYNQUI_PROJECT_API_KEY", ""),
+    environment=os.getenv("SYNQUI_ENVIRONMENT", "development")
 )
 
 # Create handler for pipeline
-handler = get_vaquero_handler(
+handler = get_synqui_handler(
     parent_context={"pipeline": "data_processing"}
 )
 

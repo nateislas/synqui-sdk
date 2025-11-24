@@ -1,4 +1,4 @@
-"""Workflow orchestration for Vaquero SDK.
+"""Workflow orchestration for Synqui SDK.
 
 This module provides high-level workflow APIs that automatically handle
 span hierarchy, dependency tracking, and graph construction.
@@ -45,7 +45,7 @@ class Workflow:
     dependency resolution, span hierarchy creation, and graph construction.
     
     Example:
-        workflow = vaquero.workflow("data_processing")
+        workflow = synqui.workflow("data_processing")
         workflow.add_step("clean", clean_data)
         workflow.add_step("analyze", analyze_data, depends_on=["clean"])
         workflow.add_step("report", generate_report, depends_on=["analyze"])
@@ -232,7 +232,7 @@ class Workflow:
         
         sdk = get_current_sdk()
         if not sdk:
-            raise RuntimeError("No SDK instance found. Call vaquero.initialize() first.")
+            raise RuntimeError("No SDK instance found. Call synqui.initialize() first.")
         
         return sdk.span(f"workflow_{self.name}")
     

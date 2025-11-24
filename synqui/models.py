@@ -1,4 +1,4 @@
-"""Data models for the Vaquero SDK."""
+"""Data models for the Synqui SDK."""
 
 import uuid
 from dataclasses import dataclass, field
@@ -19,7 +19,7 @@ class SpanStatus(Enum):
 class TraceData:
     """Trace data structure.
 
-    This represents a single trace event that will be sent to the Vaquero API.
+    This represents a single trace event that will be sent to the Synqui API.
     It contains all the information about a function call or operation.
 
     Attributes:

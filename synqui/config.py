@@ -1,4 +1,4 @@
-"""Configuration management for Vaquero SDK."""
+"""Configuration management for Synqui SDK."""
 
 import os
 from dataclasses import dataclass, field
@@ -7,20 +7,20 @@ from urllib import request as _urlreq
 from urllib.error import URLError, HTTPError
 
 if TYPE_CHECKING:
-    from .sdk import VaqueroSDK
+    from .sdk import SynquiSDK
 
 
 @dataclass
 class SDKConfig:
     """SDK configuration settings.
 
-    This class contains all the configuration options for the Vaquero SDK.
+    This class contains all the configuration options for the Synqui SDK.
     It supports environment variable configuration and provides sensible defaults.
 
     Args:
-        api_key: API key for authentication with Vaquero
+        api_key: API key for authentication with Synqui
         project_id: Project ID to associate traces with
-        endpoint: Vaquero API endpoint URL
+        endpoint: Synqui API endpoint URL
         batch_size: Number of events to batch before sending
         flush_interval: Interval in seconds to flush pending events
         max_retries: Maximum number of retry attempts for failed requests
@@ -31,7 +31,7 @@ class SDKConfig:
 
     api_key: str
     project_id: str
-    endpoint: str = "https://api.vaquero.app"
+    endpoint: str = "https://api.synqui.app"
     batch_size: int = 100
     flush_interval: float = 5.0
     max_retries: int = 3
@@ -62,15 +62,15 @@ def configure_from_env() -> SDKConfig:
     """Configure SDK from environment variables.
 
     Environment variables:
-        VAQUERO_API_KEY: API key
-        VAQUERO_PROJECT_ID: Project ID
-        VAQUERO_ENDPOINT: API endpoint URL
-        VAQUERO_BATCH_SIZE: Batch size for events
-        VAQUERO_FLUSH_INTERVAL: Flush interval in seconds
-        VAQUERO_MAX_RETRIES: Maximum retry attempts
-        VAQUERO_TIMEOUT: Request timeout in seconds
-        VAQUERO_ENVIRONMENT: Environment name
-        VAQUERO_TAGS: Global tags as JSON string
+        SYNQUI_API_KEY: API key
+        SYNQUI_PROJECT_ID: Project ID
+        SYNQUI_ENDPOINT: API endpoint URL
+        SYNQUI_BATCH_SIZE: Batch size for events
+        SYNQUI_FLUSH_INTERVAL: Flush interval in seconds
+        SYNQUI_MAX_RETRIES: Maximum retry attempts
+        SYNQUI_TIMEOUT: Request timeout in seconds
+        SYNQUI_ENVIRONMENT: Environment name
+        SYNQUI_TAGS: Global tags as JSON string
 
     Returns:
         SDKConfig instance configured from environment variables
@@ -91,28 +91,28 @@ def configure_from_env() -> SDKConfig:
             return {}
 
     # Handle project identification from environment
-    project_id = os.getenv("VAQUERO_PROJECT_ID", "")
-    project_name = os.getenv("VAQUERO_PROJECT_NAME", "")
+    project_id = os.getenv("SYNQUI_PROJECT_ID", "")
+    project_name = os.getenv("SYNQUI_PROJECT_NAME", "")
     
     # If project_name is provided, resolve it to project_id
     if project_name and not project_id:
-        endpoint = os.getenv("VAQUERO_ENDPOINT", "https://api.vaquero.com")
-        api_key = os.getenv("VAQUERO_PROJECT_API_KEY", "")
+        endpoint = os.getenv("SYNQUI_ENDPOINT", "https://api.synqui.com")
+        api_key = os.getenv("SYNQUI_PROJECT_API_KEY", "")
         if api_key:
             resolved_id = _resolve_project_by_name(endpoint, api_key, project_name)
             if resolved_id:
                 project_id = resolved_id
 
     return SDKConfig(
-        api_key=os.getenv("VAQUERO_PROJECT_API_KEY", ""),
+        api_key=os.getenv("SYNQUI_PROJECT_API_KEY", ""),
         project_id=project_id,
-        endpoint=os.getenv("VAQUERO_ENDPOINT", "https://api.vaquero.com"),
-        batch_size=int(os.getenv("VAQUERO_BATCH_SIZE", "100")),
-        flush_interval=float(os.getenv("VAQUERO_FLUSH_INTERVAL", "5.0")),
-        max_retries=int(os.getenv("VAQUERO_MAX_RETRIES", "3")),
-        timeout=float(os.getenv("VAQUERO_TIMEOUT", "30.0")),
-        environment=os.getenv("VAQUERO_ENVIRONMENT", os.getenv("VAQUERO_MODE", "development")),
-        tags=parse_tags(os.getenv("VAQUERO_TAGS", "{}"))
+        endpoint=os.getenv("SYNQUI_ENDPOINT", "https://api.synqui.com"),
+        batch_size=int(os.getenv("SYNQUI_BATCH_SIZE", "100")),
+        flush_interval=float(os.getenv("SYNQUI_FLUSH_INTERVAL", "5.0")),
+        max_retries=int(os.getenv("SYNQUI_MAX_RETRIES", "3")),
+        timeout=float(os.getenv("SYNQUI_TIMEOUT", "30.0")),
+        environment=os.getenv("SYNQUI_ENVIRONMENT", os.getenv("SYNQUI_MODE", "development")),
+        tags=parse_tags(os.getenv("SYNQUI_TAGS", "{}"))
     )
 
 
@@ -127,8 +127,8 @@ def configure(
     environment: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
     **kwargs
-) -> "VaqueroSDK":
-    """Configure the Vaquero SDK.
+) -> "SynquiSDK":
+    """Configure the Synqui SDK.
 
     This function creates a new SDK configuration and initializes the default
     SDK instance. It first loads configuration from environment variables,
@@ -137,7 +137,7 @@ def configure(
     Args:
         api_key: API key for authentication
         project_id: Project ID to associate traces with
-        endpoint: Vaquero API endpoint URL
+        endpoint: Synqui API endpoint URL
         batch_size: Number of events to batch before sending
         flush_interval: Interval in seconds to flush pending events
         max_retries: Maximum number of retry attempts
@@ -174,7 +174,7 @@ def configure(
         config.tags.update(tags)
 
     # Auto-provision project if missing
-    auto_provision = os.getenv("VAQUERO_AUTO_PROVISION_PROJECT", "true").lower() == "true"
+    auto_provision = os.getenv("SYNQUI_AUTO_PROVISION_PROJECT", "true").lower() == "true"
     if auto_provision and config.api_key and not config.project_id:
         resolved = _resolve_or_create_project(config.endpoint, config.api_key)
         if resolved:
@@ -182,12 +182,12 @@ def configure(
 
     # Create and set the default SDK instance
     from . import set_default_sdk
-    from .sdk import VaqueroSDK
-    sdk = VaqueroSDK(config)
+    from .sdk import SynquiSDK
+    sdk = SynquiSDK(config)
     set_default_sdk(sdk)
     # Also set the global instance for workflow API (use the same instance)
-    import vaquero.sdk
-    vaquero.sdk._sdk_instance = sdk
+    import synqui.sdk
+    synqui.sdk._sdk_instance = sdk
 
     return sdk
 
@@ -216,17 +216,17 @@ def init(
     endpoint: Optional[str] = None,
     environment: str = "development",
     **overrides
-) -> "VaqueroSDK":
-    """Initialize the Vaquero SDK with simplified configuration.
+) -> "SynquiSDK":
+    """Initialize the Synqui SDK with simplified configuration.
 
     This is the recommended way to initialize the SDK. It applies sensible
     presets based on the specified environment and allows for targeted overrides.
 
     Args:
-        project_api_key: Project API key for authentication with Vaquero
+        project_api_key: Project API key for authentication with Synqui
         project_id: Project ID to associate traces with (optional)
         project_name: Project name to associate traces with (optional, takes precedence over project_id)
-        endpoint: Vaquero API endpoint URL (optional)
+        endpoint: Synqui API endpoint URL (optional)
         environment: Environment name - "development" (default), "staging", or "production"
         **overrides: Additional configuration overrides
 
@@ -235,16 +235,16 @@ def init(
 
     Example:
         # Simple development setup
-        vaquero.init(project_api_key="your-key")
+        synqui.init(project_api_key="your-key")
 
         # Using project name (recommended)
-        vaquero.init(project_api_key="your-key", project_name="my-awesome-project")
+        synqui.init(project_api_key="your-key", project_name="my-awesome-project")
 
         # Production setup
-        vaquero.init(project_api_key="your-key", environment="production")
+        synqui.init(project_api_key="your-key", environment="production")
 
         # Custom configuration
-        vaquero.init(
+        synqui.init(
             project_api_key="your-key",
             project_name="my-project",
             batch_size=50
@@ -269,18 +269,18 @@ def init(
                 return {}
         
         # Get environment values manually
-        env_project_id = os.getenv("VAQUERO_PROJECT_ID", "")
-        env_endpoint = os.getenv("VAQUERO_ENDPOINT", "https://api.vaquero.com")
+        env_project_id = os.getenv("SYNQUI_PROJECT_ID", "")
+        env_endpoint = os.getenv("SYNQUI_ENDPOINT", "https://api.synqui.com")
         
         config = SDKConfig(
             api_key=project_api_key,  # Use explicit key to pass validation
             project_id=env_project_id if not project_id else None,
             endpoint=env_endpoint if not endpoint else None,
-            batch_size=int(os.getenv("VAQUERO_BATCH_SIZE", "100")),
-            flush_interval=float(os.getenv("VAQUERO_FLUSH_INTERVAL", "5.0")),
-            max_retries=int(os.getenv("VAQUERO_MAX_RETRIES", "3")),
-            timeout=float(os.getenv("VAQUERO_TIMEOUT", "30.0")),
-            tags=parse_tags(os.getenv("VAQUERO_TAGS", "")),
+            batch_size=int(os.getenv("SYNQUI_BATCH_SIZE", "100")),
+            flush_interval=float(os.getenv("SYNQUI_FLUSH_INTERVAL", "5.0")),
+            max_retries=int(os.getenv("SYNQUI_MAX_RETRIES", "3")),
+            timeout=float(os.getenv("SYNQUI_TIMEOUT", "30.0")),
+            tags=parse_tags(os.getenv("SYNQUI_TAGS", "")),
         )
     else:
         # No explicit API key, try from environment
@@ -319,7 +319,7 @@ def init(
             raise ValueError(f"Unknown configuration option: {key}")
 
     # Auto-provision project if missing
-    auto_provision = os.getenv("VAQUERO_AUTO_PROVISION_PROJECT", "true").lower() == "true"
+    auto_provision = os.getenv("SYNQUI_AUTO_PROVISION_PROJECT", "true").lower() == "true"
     if auto_provision and config.api_key and not config.project_id:
         resolved = _resolve_or_create_project(config.endpoint, config.api_key)
         if resolved:
@@ -327,13 +327,13 @@ def init(
 
     # Create and set the default SDK instance
     from . import set_default_sdk
-    from .sdk import VaqueroSDK
-    sdk = VaqueroSDK(config)
+    from .sdk import SynquiSDK
+    sdk = SynquiSDK(config)
     set_default_sdk(sdk)
 
     # Also set the global instance for workflow API (use the same instance)
-    import vaquero.sdk
-    vaquero.sdk._sdk_instance = sdk
+    import synqui.sdk
+    synqui.sdk._sdk_instance = sdk
 
     return sdk
 

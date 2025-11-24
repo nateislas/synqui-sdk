@@ -112,7 +112,7 @@ Each agent evaluates whether to:
 - **Metaphorical**: Analogies and relatable comparisons
 - **Critical**: Analysis of weaknesses and limitations
 
-## Strengths for Vaquero Stress Testing
+## Strengths for Synqui Stress Testing
 
 ### Complex Agent Interactions
 - **Multi-agent handoffs** create rich trace hierarchies
@@ -148,4 +148,4 @@ Each agent evaluates whether to:
 - Multiple concurrent users
 - Agent response times and coordination efficiency
 
-This architecture provides an excellent foundation for stress testing Vaquero's ability to trace complex multi-agent workflows, document processing pipelines, and real-world user interactions.
+This architecture provides an excellent foundation for stress testing Synqui's ability to trace complex multi-agent workflows, document processing pipelines, and real-world user interactions.

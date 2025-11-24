@@ -1,4 +1,4 @@
-"""Utility functions for Vaquero SDK.
+"""Utility functions for Synqui SDK.
 
 This module provides convenient wrappers around common operations that
 automatically capture errors to trace when there's an active trace context.
@@ -29,13 +29,13 @@ def json_loads(s: str, **kwargs) -> Any:
         JSONDecodeError: If JSON parsing fails (same as json.loads)
         
     Example:
-        import vaquero
+        import synqui
         
         # Instead of: result = json.loads(data)
-        result = vaquero.json_loads(data)
+        result = synqui.json_loads(data)
         
         # With options
-        result = vaquero.json_loads(data, strict=False)
+        result = synqui.json_loads(data, strict=False)
     """
     try:
         return json.loads(s, **kwargs)

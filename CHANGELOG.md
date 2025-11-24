@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Vaquero Python SDK will be documented in this file.
+All notable changes to the Synqui Python SDK will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2024-01-01
 
 ### Added
-- Initial release of Vaquero Python SDK with simplified `init()` API
+- Initial release of Synqui Python SDK with simplified `init()` API
 - Basic tracing decorators for sync and async functions
 - Manual span creation with context managers
 - Batch processing with configurable batch sizes
@@ -51,12 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Reliability**: Graceful degradation and retry mechanisms
 
 ### API
-- `vaquero.init()` - Simplified SDK initialization
-- `@vaquero.trace()` - Function tracing decorator
-- `vaquero.span()` - Manual span context manager
-- `vaquero.flush()` - Manual trace flushing
-- `vaquero.shutdown()` - SDK shutdown
-- `vaquero.get_stats()` - SDK statistics and metrics
+- `synqui.init()` - Simplified SDK initialization
+- `@synqui.trace()` - Function tracing decorator
+- `synqui.span()` - Manual span context manager
+- `synqui.flush()` - Manual trace flushing
+- `synqui.shutdown()` - SDK shutdown
+- `synqui.get_stats()` - SDK statistics and metrics
 
 ### Configuration Options
 - API key and project ID (with auto-provisioning)
@@ -141,10 +141,10 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## Support
 
-- **Documentation**: [https://docs.vaquero.com](https://docs.vaquero.com)
-- **GitHub**: [https://github.com/nateislas/vaquero-sdk](https://github.com/nateislas/vaquero-sdk)
-- **Issues**: [https://github.com/nateislas/vaquero-sdk/issues](https://github.com/nateislas/vaquero-sdk/issues)
-- **Email**: support@vaquero.app
+- **Documentation**: [https://docs.synqui.com](https://docs.synqui.com)
+- **GitHub**: [https://github.com/nateislas/synqui-sdk](https://github.com/nateislas/synqui-sdk)
+- **Issues**: [https://github.com/nateislas/synqui-sdk/issues](https://github.com/nateislas/synqui-sdk/issues)
+- **Email**: support@synqui.app
 
 ## License
 

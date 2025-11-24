@@ -1,35 +1,35 @@
 #!/usr/bin/env python3
 """
-Basic Usage Examples for Vaquero SDK
+Basic Usage Examples for Synqui SDK
 
-This file demonstrates the core functionality of the Vaquero SDK
+This file demonstrates the core functionality of the Synqui SDK
 with practical examples for different use cases.
 
 SDK Initialization:
-- Use vaquero.init() for the new simplified initialization (recommended)
-- Use vaquero.configure() for advanced configuration (legacy, still supported)
+- Use synqui.init() for the new simplified initialization (recommended)
+- Use synqui.configure() for advanced configuration (legacy, still supported)
 """
 
 import asyncio
 import time
 import json
 from typing import Dict, List, Any
-import vaquero
+import synqui
 
 # Configure the SDK using the new init() method (recommended)
-vaquero.init(api_key="your-api-key-here", mode="development")
+synqui.init(api_key="your-api-key-here", mode="development")
 
 # Alternative: Use the legacy configure() method for backward compatibility
-# vaquero.configure(
+# synqui.configure(
 #     api_key="your-api-key-here",
 #     project_id="your-project-id",
-#     endpoint="https://api.vaquero.com",
+#     endpoint="https://api.synqui.com",
 #     environment="development",
 #     debug=True
 # )
 
 # Example 1: Simple synchronous function tracing
-@vaquero.trace(agent_name="data_processor")
+@synqui.trace(agent_name="data_processor")
 def process_user_data(user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Process user data with automatic tracing."""
     # Simulate some processing time
@@ -45,7 +45,7 @@ def process_user_data(user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 # Example 2: Asynchronous function tracing
-@vaquero.trace(agent_name="api_client")
+@synqui.trace(agent_name="api_client")
 async def fetch_user_profile(user_id: str) -> Dict[str, Any]:
     """Fetch user profile from external API."""
     # Simulate API call delay
@@ -59,7 +59,7 @@ async def fetch_user_profile(user_id: str) -> Dict[str, Any]:
     }
 
 # Example 3: Function with error handling
-@vaquero.trace(agent_name="risky_operation")
+@synqui.trace(agent_name="risky_operation")
 def risky_operation(data: Dict[str, Any]) -> Dict[str, Any]:
     """Operation that might fail - demonstrates error tracing."""
     if "error" in data:
@@ -70,22 +70,22 @@ def risky_operation(data: Dict[str, Any]) -> Dict[str, Any]:
 # Example 4: Manual span creation with context
 async def complex_workflow():
     """Example of manual span creation for complex workflows."""
-    async with vaquero.span("complex_workflow") as span:
+    async with synqui.span("complex_workflow") as span:
         span.set_attribute("workflow_type", "user_onboarding")
         span.set_attribute("version", "1.0")
 
         # Step 1: Fetch user data
-        async with vaquero.span("fetch_user_data") as fetch_span:
+        async with synqui.span("fetch_user_data") as fetch_span:
             fetch_span.set_attribute("source", "database")
             user_data = await fetch_user_profile("123")
 
         # Step 2: Process the data
-        async with vaquero.span("process_data") as process_span:
+        async with synqui.span("process_data") as process_span:
             process_span.set_attribute("algorithm", "standard_processing")
             processed_data = process_user_data("123", user_data)
 
         # Step 3: Validate results
-        async with vaquero.span("validate_results") as validate_span:
+        async with synqui.span("validate_results") as validate_span:
             validate_span.set_attribute("validation_type", "completeness")
             if not processed_data.get("status") == "processed":
                 raise ValueError("Data processing failed validation")
@@ -93,14 +93,14 @@ async def complex_workflow():
         return processed_data
 
 # Example 5: Batch processing with tracing
-@vaquero.trace(agent_name="batch_processor")
+@synqui.trace(agent_name="batch_processor")
 def process_batch(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Process a batch of items with tracing."""
     results = []
 
     for i, item in enumerate(items):
         # Create a nested span for each item
-        with vaquero.span(f"process_item_{i}") as item_span:
+        with synqui.span(f"process_item_{i}") as item_span:
             item_span.set_attribute("item_index", i)
             item_span.set_attribute("item_type", item.get("type", "unknown"))
 
@@ -117,7 +117,7 @@ def process_batch(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return results
 
 # Example 6: Custom tags and metadata
-@vaquero.trace(
+@synqui.trace(
     agent_name="ml_predictor",
     tags={"model_version": "v2.1", "environment": "production"},
     metadata={"team": "ml", "cost_center": "engineering"}
@@ -138,7 +138,7 @@ def ml_prediction(input_data: Dict[str, Any]) -> Dict[str, Any]:
 def conditional_operation(data: Dict[str, Any], enable_tracing: bool = True):
     """Operation that can be traced conditionally."""
     if enable_tracing:
-        @vaquero.trace(agent_name="conditional_processor")
+        @synqui.trace(agent_name="conditional_processor")
         def traced_operation():
             return process_user_data("conditional", data)
         return traced_operation()
@@ -146,12 +146,12 @@ def conditional_operation(data: Dict[str, Any], enable_tracing: bool = True):
         return process_user_data("conditional", data)
 
 # Example 8: Error recovery with tracing
-@vaquero.trace(agent_name="resilient_processor")
+@synqui.trace(agent_name="resilient_processor")
 def resilient_operation(data: Dict[str, Any], max_retries: int = 3) -> Dict[str, Any]:
     """Operation with retry logic and error tracing."""
     for attempt in range(max_retries):
         try:
-            with vaquero.span(f"attempt_{attempt + 1}") as attempt_span:
+            with synqui.span(f"attempt_{attempt + 1}") as attempt_span:
                 attempt_span.set_attribute("attempt_number", attempt + 1)
                 attempt_span.set_attribute("max_retries", max_retries)
 
@@ -169,7 +169,7 @@ def resilient_operation(data: Dict[str, Any], max_retries: int = 3) -> Dict[str,
 
 def main():
     """Run all examples."""
-    print("🚀 Running Vaquero SDK Examples")
+    print("🚀 Running Synqui SDK Examples")
     print("=" * 50)
     
     # Example 1: Simple sync function
@@ -234,7 +234,7 @@ def main():
         print(f"   Failed after all retries: {e}")
     
     print("\n✅ All examples completed!")
-    print("\nNote: In a real application, traces would be sent to the Vaquero API.")
+    print("\nNote: In a real application, traces would be sent to the Synqui API.")
     print("Make sure to configure your API key and project ID before running.")
 
 if __name__ == "__main__":

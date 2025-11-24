@@ -15,7 +15,7 @@ LangChain documentation at: https://langchain-ai.github.io/langgraph/agents/mult
 - **Interactive Chat Interface**: Ask questions and get tailored responses
 - **Smart Collaboration**: Agents automatically work together for complex queries
 - **Document Analysis Tools**: Extract key terms, analyze structure, and assess complexity
-- **Observability Integration**: Built-in Vaquero integration for monitoring agent interactions and performance
+- **Observability Integration**: Built-in Synqui integration for monitoring agent interactions and performance
 
 ## Application
 
@@ -44,14 +44,14 @@ uv sync
 # Required for the application
 export GOOGLE_API_KEY="your-google-api-key-here"
 
-# Optional: Vaquero observability (recommended)
-export VAQUERO_PROJECT_API_KEY="your-vaquero-api-key-here"
-export VAQUERO_PROJECT_NAME="article-explainer"
-export VAQUERO_ENDPOINT="http://localhost:8000"
-export VAQUERO_ENVIRONMENT="development"
-# Or use VAQUERO_MODE for backward compatibility:
-# export VAQUERO_MODE="development"
-export VAQUERO_DEBUG="false"
+# Optional: Synqui observability (recommended)
+export SYNQUI_PROJECT_API_KEY="your-synqui-api-key-here"
+export SYNQUI_PROJECT_NAME="article-explainer"
+export SYNQUI_ENDPOINT="http://localhost:8000"
+export SYNQUI_ENVIRONMENT="development"
+# Or use SYNQUI_MODE for backward compatibility:
+# export SYNQUI_MODE="development"
+export SYNQUI_DEBUG="false"
 ```
 
 ### Usage
@@ -77,22 +77,22 @@ uv run streamlit run article_explainer_page.py
 
 1. Open your browser at `http://localhost:8501`
 
-## Observability with Vaquero
+## Observability with Synqui
 
-This application includes built-in observability through Vaquero, allowing you to monitor:
+This application includes built-in observability through Synqui, allowing you to monitor:
 
 - **Agent Interactions**: Track how the 5 specialized agents collaborate
 - **Performance Metrics**: Monitor response times and processing efficiency  
 - **User Behavior**: Understand query patterns and document complexity
 - **System Health**: Monitor PDF processing and agent performance
 
-### Vaquero Setup
+### Synqui Setup
 
-1. **Get your API key**: Sign up at [Vaquero](https://vaquero.com) to get your project API key
-2. **Configure environment**: Set the `VAQUERO_PROJECT_API_KEY` environment variable
-3. **View traces**: Access the Vaquero dashboard to see real-time agent interactions
+1. **Get your API key**: Sign up at [Synqui](https://synqui.com) to get your project API key
+2. **Configure environment**: Set the `SYNQUI_PROJECT_API_KEY` environment variable
+3. **View traces**: Access the Synqui dashboard to see real-time agent interactions
 
-The application will automatically start tracing when Vaquero is configured, with no additional code changes needed.
+The application will automatically start tracing when Synqui is configured, with no additional code changes needed.
 
 ## Example Queries
 

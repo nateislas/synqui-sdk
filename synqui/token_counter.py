@@ -1,4 +1,4 @@
-"""Token counting utilities for the Vaquero SDK.
+"""Token counting utilities for the Synqui SDK.
 
 This module provides automatic token counting for various LLM providers
 and text inputs, enabling accurate cost estimation and performance monitoring.

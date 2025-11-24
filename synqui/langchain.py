@@ -1,7 +1,7 @@
-"""LangChain integration for Vaquero SDK.
+"""LangChain integration for Synqui SDK.
 
 This module provides a callback handler that integrates LangChain operations
-with Vaquero tracing, allowing seamless observability of LCEL chains, agents,
+with Synqui tracing, allowing seamless observability of LCEL chains, agents,
 tools, and retrievers.
 """
 
@@ -17,36 +17,36 @@ except ImportError:
     LANGCHAIN_AVAILABLE = False
     BaseCallbackHandler = object  # Fallback for type hints
 
-from .sdk import VaqueroSDK, get_global_instance
+from .sdk import SynquiSDK, get_global_instance
 from .context import (
-    get_current_span as _vaq_get_current_span,
-    create_child_span as _vaq_create_child_span,
-    span_context as _vaq_span_context,
+    get_current_span as _syn_get_current_span,
+    create_child_span as _syn_create_child_span,
+    span_context as _syn_span_context,
 )
 
 
-class VaqueroCallbackHandler(BaseCallbackHandler):
-    """LangChain callback handler that sends traces to Vaquero.
+class SynquiCallbackHandler(BaseCallbackHandler):
+    """LangChain callback handler that sends traces to Synqui.
 
     This handler implements LangChain's BaseCallbackHandler interface to
     automatically trace chain, LLM, tool, and retriever operations.
 
     Example:
-        from vaquero.langchain import VaqueroCallbackHandler
+        from synqui.langchain import SynquiCallbackHandler
 
-        handler = VaqueroCallbackHandler()
+        handler = SynquiCallbackHandler()
         chain.invoke(input, config={"callbacks": [handler]})
     """
 
     def __init__(
         self,
-        sdk: Optional[VaqueroSDK] = None,
+        sdk: Optional[SynquiSDK] = None,
         parent_context: Optional[Dict[str, Any]] = None
     ):
         """Initialize the callback handler.
 
         Args:
-            sdk: Vaquero SDK instance to use. If None, uses the global instance.
+            sdk: Synqui SDK instance to use. If None, uses the global instance.
             parent_context: Parent span context to inherit (session_id, parent_span_id, etc.)
         """
         if not LANGCHAIN_AVAILABLE:
@@ -61,9 +61,9 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         # Structure: run_id -> {"span": TraceData, "cm": context_manager}
         self._spans = {}
         self._trace_id = str(uuid.uuid4())
-        # Capture root context (if handler is created inside a vaquero.span)
+        # Capture root context (if handler is created inside a synqui.span)
         try:
-            _root = _vaq_get_current_span()
+            _root = _syn_get_current_span()
             self._root_trace_id = _root.trace_id if _root else None
             self._root_span_id = _root.span_id if _root else None
         except Exception:
@@ -105,17 +105,17 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         })
 
         # Check if we have a current span context from parent workflow (global context)
-        current_span = _vaq_get_current_span()
+        current_span = _syn_get_current_span()
         if current_span:
             # Inherit trace_id from current span context
-            span = _vaq_create_child_span(
+            span = _syn_create_child_span(
                 agent_name=f"langchain:{span_name}",
                 function_name=f"langchain:{span_name}",
                 metadata=enhanced_metadata,
                 tags=enhanced_metadata.get("tags", {})
             )
             # Set up context manager manually for this span
-            cm = _vaq_span_context(span)
+            cm = _syn_span_context(span)
             span = cm.__enter__()
             self._spans[run_id] = {"span": span, "cm": cm}
         else:
@@ -244,10 +244,10 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         })
 
         # Check if we have a current span context from parent workflow (global context)
-        current_span = _vaq_get_current_span()
+        current_span = _syn_get_current_span()
         if current_span:
             # Inherit trace_id from current span context
-            span = _vaq_create_child_span(
+            span = _syn_create_child_span(
                 agent_name=span_name,
                 function_name=span_name,
                 metadata=enhanced_metadata,
@@ -475,17 +475,17 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         })
 
         # Check if we have a current span context from parent workflow (global context)
-        current_span = _vaq_get_current_span()
+        current_span = _syn_get_current_span()
         if current_span:
             # Inherit trace_id from current span context
-            span = _vaq_create_child_span(
+            span = _syn_create_child_span(
                 agent_name=span_name,
                 function_name=span_name,
                 metadata=enhanced_metadata,
                 tags=enhanced_metadata.get("tags", {})
             )
             # Set up context manager manually for this span
-            cm = _vaq_span_context(span)
+            cm = _syn_span_context(span)
             span = cm.__enter__()
             self._spans[run_id] = {"span": span, "cm": cm}
         else:
@@ -558,17 +558,17 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
         span_name = f"retriever:{retriever_name}"
 
         # Check if we have a current span context from parent workflow (global context)
-        current_span = _vaq_get_current_span()
+        current_span = _syn_get_current_span()
         if current_span:
             # Inherit trace_id from current span context
-            span = _vaq_create_child_span(
+            span = _syn_create_child_span(
                 agent_name=span_name,
                 function_name=span_name,
                 metadata=self.parent_context,
                 tags=self.parent_context.get("tags", {})
             )
             # Set up context manager manually for this span
-            cm = _vaq_span_context(span)
+            cm = _syn_span_context(span)
             span = cm.__enter__()
             self._spans[run_id] = {"span": span, "cm": cm}
         else:
@@ -801,7 +801,7 @@ class VaqueroCallbackHandler(BaseCallbackHandler):
 # Thread-local registry for active callback handlers
 _handler_registry = threading.local()
 
-def _register_handler(handler: VaqueroCallbackHandler):
+def _register_handler(handler: SynquiCallbackHandler):
     """Register a callback handler in the thread-local registry."""
     if not hasattr(_handler_registry, 'handlers'):
         _handler_registry.handlers = []
@@ -810,7 +810,7 @@ def _register_handler(handler: VaqueroCallbackHandler):
     if len(_handler_registry.handlers) > 1:
         _handler_registry.handlers = [_handler_registry.handlers[-1]]
 
-def _get_active_handler() -> Optional[VaqueroCallbackHandler]:
+def _get_active_handler() -> Optional[SynquiCallbackHandler]:
     """Get the most recently registered active callback handler."""
     if hasattr(_handler_registry, 'handlers') and _handler_registry.handlers:
         return _handler_registry.handlers[-1]
@@ -834,7 +834,7 @@ def capture_error(error: Exception, agent_name: Optional[str] = None, context: O
         try:
             result = json.loads(data)
         except json.JSONDecodeError as e:
-            vaquero.langchain.capture_error(e, agent_name="my_agent")
+            synqui.langchain.capture_error(e, agent_name="my_agent")
             raise
     """
     handler = _get_active_handler()
@@ -842,27 +842,27 @@ def capture_error(error: Exception, agent_name: Optional[str] = None, context: O
         return handler.capture_error(error, agent_name, context)
     return False
 
-def get_vaquero_handler(
-    sdk: Optional[VaqueroSDK] = None,
+def get_synqui_handler(
+    sdk: Optional[SynquiSDK] = None,
     parent_context: Optional[Dict[str, Any]] = None
-) -> VaqueroCallbackHandler:
-    """Get a configured Vaquero callback handler for LangChain.
+) -> SynquiCallbackHandler:
+    """Get a configured Synqui callback handler for LangChain.
 
-    This is a convenience function for creating a VaqueroCallbackHandler
+    This is a convenience function for creating a SynquiCallbackHandler
     with sensible defaults. The handler is automatically registered for
     post-processing error capture.
 
     Args:
-        sdk: Vaquero SDK instance to use. If None, uses the global instance.
+        sdk: Synqui SDK instance to use. If None, uses the global instance.
         parent_context: Parent span context to inherit (session_id, parent_span_id, etc.)
 
     Returns:
-        Configured VaqueroCallbackHandler instance
+        Configured SynquiCallbackHandler instance
 
     Example:
-        from vaquero.langchain import get_vaquero_handler
+        from synqui.langchain import get_synqui_handler
 
-        handler = get_vaquero_handler()
+        handler = get_synqui_handler()
         chain.invoke(input, config={"callbacks": [handler]})
     """
-    return VaqueroCallbackHandler(sdk=sdk, parent_context=parent_context)
+    return SynquiCallbackHandler(sdk=sdk, parent_context=parent_context)

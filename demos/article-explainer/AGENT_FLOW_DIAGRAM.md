@@ -150,7 +150,7 @@ User: "Explain how machine learning works in this paper"
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Vaquero Tracing Opportunities
+## Synqui Tracing Opportunities
 
 ### High-Value Trace Scenarios
 
@@ -179,4 +179,4 @@ User: "Explain how machine learning works in this paper"
    - Follow-up question handling
    - Session state management
 
-This architecture provides rich opportunities for testing Vaquero's ability to trace complex multi-agent workflows, document processing pipelines, and real-world user interactions.
+This architecture provides rich opportunities for testing Synqui's ability to trace complex multi-agent workflows, document processing pipelines, and real-world user interactions.

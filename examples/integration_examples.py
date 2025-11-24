@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Integration Examples for Vaquero SDK
+Integration Examples for Synqui SDK
 
-This file demonstrates how to integrate Vaquero SDK with popular
+This file demonstrates how to integrate Synqui SDK with popular
 Python frameworks and libraries.
 """
 
@@ -11,10 +11,10 @@ import time
 import json
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
-import vaquero
+import synqui
 
 # Initialize SDK for integration examples
-vaquero.init(
+synqui.init(
     api_key="integration-example-key",
     project_id="integration-example-project",
     mode="development"
@@ -23,7 +23,7 @@ vaquero.init(
 # Example 1: FastAPI Integration
 def fastapi_integration_example():
     """
-    Example of integrating Vaquero with FastAPI.
+    Example of integrating Synqui with FastAPI.
     
     This would typically be in a separate file like main.py
     """
@@ -34,12 +34,12 @@ def fastapi_integration_example():
     from fastapi.middleware.base import BaseHTTPMiddleware
     import time
     
-    app = FastAPI(title="Vaquero Integration Example")
+    app = FastAPI(title="Synqui Integration Example")
     
     # Middleware for automatic request tracing
-    class VaqueroMiddleware(BaseHTTPMiddleware):
+    class SynquiMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
-            with vaquero.span("http_request") as span:
+            with synqui.span("http_request") as span:
                 span.set_attribute("method", request.method)
                 span.set_attribute("url", str(request.url))
                 span.set_attribute("user_agent", request.headers.get("user-agent", ""))
@@ -53,17 +53,17 @@ def fastapi_integration_example():
                 
                 return response
     
-    app.add_middleware(VaqueroMiddleware)
+    app.add_middleware(SynquiMiddleware)
     
     @app.get("/users/{user_id}")
-    @vaquero.trace(agent_name="user_service")
+    @synqui.trace(agent_name="user_service")
     async def get_user(user_id: int):
         # Simulate database query
         await asyncio.sleep(0.1)
         return {"user_id": user_id, "name": "John Doe", "email": "john@example.com"}
     
     @app.post("/users")
-    @vaquero.trace(agent_name="user_service")
+    @synqui.trace(agent_name="user_service")
     async def create_user(user_data: dict):
         # Simulate user creation
         await asyncio.sleep(0.2)
@@ -78,15 +78,15 @@ def fastapi_integration_example():
 
 # Example 2: SQLAlchemy Integration
 class SQLAlchemyIntegration:
-    """Example of integrating Vaquero with SQLAlchemy."""
+    """Example of integrating Synqui with SQLAlchemy."""
     
     def __init__(self):
         self.queries_executed = 0
     
-    @vaquero.trace(agent_name="database_orm")
+    @synqui.trace(agent_name="database_orm")
     async def execute_query(self, query: str, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """Execute a SQLAlchemy query with tracing."""
-        with vaquero.span("sqlalchemy_query") as span:
+        with synqui.span("sqlalchemy_query") as span:
             span.set_attribute("query_type", "select")
             span.set_attribute("query_text", query[:100])  # Truncate for privacy
             span.set_attribute("param_count", len(params) if params else 0)
@@ -116,10 +116,10 @@ class SQLAlchemyIntegration:
                 span.set_attribute("error_type", type(e).__name__)
                 raise
     
-    @vaquero.trace(agent_name="database_orm")
+    @synqui.trace(agent_name="database_orm")
     async def bulk_insert(self, model_class: str, records: List[Dict[str, Any]]) -> int:
         """Bulk insert with SQLAlchemy tracing."""
-        with vaquero.span("sqlalchemy_bulk_insert") as span:
+        with synqui.span("sqlalchemy_bulk_insert") as span:
             span.set_attribute("model_class", model_class)
             span.set_attribute("record_count", len(records))
             
@@ -142,13 +142,13 @@ class SQLAlchemyIntegration:
 
 # Example 3: Celery Task Integration
 class CeleryIntegration:
-    """Example of integrating Vaquero with Celery tasks."""
+    """Example of integrating Synqui with Celery tasks."""
     
     @staticmethod
-    @vaquero.trace(agent_name="celery_worker")
+    @synqui.trace(agent_name="celery_worker")
     def process_data_task(data: Dict[str, Any]) -> Dict[str, Any]:
         """Celery task with tracing."""
-        with vaquero.span("celery_task") as span:
+        with synqui.span("celery_task") as span:
             span.set_attribute("task_name", "process_data_task")
             span.set_attribute("data_size", len(str(data)))
             
@@ -165,10 +165,10 @@ class CeleryIntegration:
             return result
     
     @staticmethod
-    @vaquero.trace(agent_name="celery_worker")
+    @synqui.trace(agent_name="celery_worker")
     def send_email_task(recipient: str, subject: str, body: str) -> Dict[str, Any]:
         """Email sending task with tracing."""
-        with vaquero.span("celery_email_task") as span:
+        with synqui.span("celery_email_task") as span:
             span.set_attribute("task_name", "send_email_task")
             span.set_attribute("recipient", recipient)
             span.set_attribute("subject", subject)
@@ -186,7 +186,7 @@ class CeleryIntegration:
 # Example 4: Django Integration
 def django_integration_example():
     """
-    Example of integrating Vaquero with Django.
+    Example of integrating Synqui with Django.
     
     This would typically be in Django settings and middleware files.
     """
@@ -194,28 +194,28 @@ def django_integration_example():
     # Django integration code (commented out since we don't have Django installed)
     """
     # In settings.py
-    import vaquero
+    import synqui
     
     # Initialize SDK
-    vaquero.init(
-        api_key=os.getenv('VAQUERO_API_KEY'),
-        project_id=os.getenv('VAQUERO_PROJECT_ID'),
-        mode=os.getenv('VAQUERO_MODE', 'development')
+    synqui.init(
+        api_key=os.getenv('SYNQUI_API_KEY'),
+        project_id=os.getenv('SYNQUI_PROJECT_ID'),
+        mode=os.getenv('SYNQUI_MODE', 'development')
     )
     
     # In middleware.py
     from django.utils.deprecation import MiddlewareMixin
     import time
     
-    class VaqueroMiddleware(MiddlewareMixin):
+    class SynquiMiddleware(MiddlewareMixin):
         def process_request(self, request):
-            request._vaquero_start_time = time.time()
+            request._synqui_start_time = time.time()
             
         def process_response(self, request, response):
-            if hasattr(request, '_vaquero_start_time'):
-                duration = time.time() - request._vaquero_start_time
+            if hasattr(request, '_synqui_start_time'):
+                duration = time.time() - request._synqui_start_time
                 
-                with vaquero.span("django_request") as span:
+                with synqui.span("django_request") as span:
                     span.set_attribute("method", request.method)
                     span.set_attribute("path", request.path)
                     span.set_attribute("status_code", response.status_code)
@@ -229,7 +229,7 @@ def django_integration_example():
     from django.views.decorators.http import require_http_methods
     
     @require_http_methods(["GET"])
-    @vaquero.trace(agent_name="django_view")
+    @synqui.trace(agent_name="django_view")
     def user_list_view(request):
         # Simulate database query
         users = User.objects.all()[:10]
@@ -244,7 +244,7 @@ def django_integration_example():
 
 # Example 5: Flask Integration
 class FlaskIntegration:
-    """Example of integrating Vaquero with Flask."""
+    """Example of integrating Synqui with Flask."""
     
     def __init__(self):
         self.request_count = 0
@@ -267,7 +267,7 @@ class FlaskIntegration:
             if hasattr(g, 'start_time'):
                 duration = time.time() - g.start_time
                 
-                with vaquero.span("flask_request") as span:
+                with synqui.span("flask_request") as span:
                     span.set_attribute("method", request.method)
                     span.set_attribute("path", request.path)
                     span.set_attribute("status_code", response.status_code)
@@ -276,7 +276,7 @@ class FlaskIntegration:
             return response
         
         @app.route('/users/<int:user_id>')
-        @vaquero.trace(agent_name="flask_view")
+        @synqui.trace(agent_name="flask_view")
         def get_user(user_id):
             # Simulate database query
             time.sleep(0.1)
@@ -291,12 +291,12 @@ class FlaskIntegration:
 
 # Example 6: AsyncIO Integration
 class AsyncIOIntegration:
-    """Example of integrating Vaquero with AsyncIO patterns."""
+    """Example of integrating Synqui with AsyncIO patterns."""
     
-    @vaquero.trace(agent_name="asyncio_worker")
+    @synqui.trace(agent_name="asyncio_worker")
     async def process_concurrent_tasks(self, tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Process multiple tasks concurrently with tracing."""
-        async with vaquero.span("concurrent_processing") as span:
+        async with synqui.span("concurrent_processing") as span:
             span.set_attribute("task_count", len(tasks))
             
             # Create coroutines for concurrent execution
@@ -321,10 +321,10 @@ class AsyncIOIntegration:
             
             return successful_results
     
-    @vaquero.trace(agent_name="asyncio_worker")
+    @synqui.trace(agent_name="asyncio_worker")
     async def _process_single_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Process a single task with tracing."""
-        with vaquero.span("single_task") as span:
+        with synqui.span("single_task") as span:
             span.set_attribute("task_id", task.get("id", "unknown"))
             span.set_attribute("task_type", task.get("type", "unknown"))
             
@@ -342,7 +342,7 @@ def framework_trace(agent_name: str, framework: str = "custom"):
     """Custom decorator for framework-specific tracing."""
     def decorator(func):
         def wrapper(*args, **kwargs):
-            with vaquero.span(f"{framework}_{func.__name__}") as span:
+            with synqui.span(f"{framework}_{func.__name__}") as span:
                 span.set_attribute("agent_name", agent_name)
                 span.set_attribute("framework", framework)
                 span.set_attribute("function_name", func.__name__)
@@ -382,7 +382,7 @@ class FrameworkContext:
         self.span = None
     
     def __enter__(self):
-        self.span = vaquero.span(f"{self.framework}_{self.operation_name}")
+        self.span = synqui.span(f"{self.framework}_{self.operation_name}")
         self.span.__enter__()
         self.span.set_attribute("framework", self.framework)
         self.span.set_attribute("operation", self.operation_name)
@@ -399,7 +399,7 @@ class FrameworkContext:
 
 async def main():
     """Run integration examples."""
-    print("🚀 Running Vaquero SDK Integration Examples")
+    print("🚀 Running Synqui SDK Integration Examples")
     print("=" * 60)
     
     # FastAPI integration
@@ -456,7 +456,7 @@ async def main():
         print("   Database transaction completed")
     
     print("\n✅ All integration examples completed!")
-    print("\nNote: These examples show how to integrate Vaquero with popular frameworks.")
+    print("\nNote: These examples show how to integrate Synqui with popular frameworks.")
     print("Choose the integration pattern that best fits your application architecture.")
 
 if __name__ == "__main__":

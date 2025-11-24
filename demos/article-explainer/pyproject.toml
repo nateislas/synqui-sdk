@@ -20,10 +20,10 @@ dependencies = [
     "pypdf",
     "langchain_ollama",
     "streamlit-pdf-viewer>=0.0.26",
-    "vaquero-sdk",
+    "synqui-sdk",
 ]
 
 [tool.uv.sources]
-vaquero-sdk = { path = "../../sdk", editable = true }
+synqui-sdk = { path = "../../sdk", editable = true }
 
 [tool.uv]

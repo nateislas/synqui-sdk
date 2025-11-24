@@ -2,9 +2,9 @@ include README.md
 include LICENSE
 include CHANGELOG.md
 include pyproject.toml
-include vaquero/py.typed
+include synqui/py.typed
 
-recursive-include vaquero *.py *.pyi
+recursive-include synqui *.py *.pyi
 recursive-exclude tests *
 recursive-exclude examples *
 exclude .gitignore

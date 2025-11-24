@@ -1,1 +1,1 @@
-# Examples package for Vaquero SDK
+# Examples package for Synqui SDK

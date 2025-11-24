@@ -23,12 +23,12 @@ def get_chat_model(model_name: str = "gemini-2.5-flash-lite"):
     )
 
 
-def get_vaquero_config():
-    """Returns Vaquero configuration from environment variables."""
+def get_synqui_config():
+    """Returns Synqui configuration from environment variables."""
     load_dotenv()
     return {
-        "project_name": os.getenv("VAQUERO_PROJECT_NAME", "article-explainer"),
-        "project_api_key": os.getenv("VAQUERO_PROJECT_API_KEY"),
-        "endpoint": os.getenv("VAQUERO_ENDPOINT", "http://localhost:8000"),
-        "environment": os.getenv("VAQUERO_ENVIRONMENT", os.getenv("VAQUERO_MODE", "development"))
+        "project_name": os.getenv("SYNQUI_PROJECT_NAME", "article-explainer"),
+        "project_api_key": os.getenv("SYNQUI_PROJECT_API_KEY"),
+        "endpoint": os.getenv("SYNQUI_ENDPOINT", "http://localhost:8000"),
+        "environment": os.getenv("SYNQUI_ENVIRONMENT", os.getenv("SYNQUI_MODE", "development"))
     }

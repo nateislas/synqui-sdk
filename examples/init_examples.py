@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Examples demonstrating the new vaquero.init() method with different modes."""
+"""Examples demonstrating the new synqui.init() method with different modes."""
 
-import vaquero
+import synqui
 
 def demonstrate_init_usage():
-    """Demonstrate different ways to use vaquero.init()."""
+    """Demonstrate different ways to use synqui.init()."""
 
-    print("🚀 Vaquero SDK init() Examples")
+    print("🚀 Synqui SDK init() Examples")
     print("=" * 40)
 
     # Example 1: Simple development setup (default)
     print("\n1. Simple development setup (default mode):")
-    print("   vaquero.init(api_key='your-api-key')")
+    print("   synqui.init(api_key='your-api-key')")
     print("   - Uses development preset")
     print("   - Captures inputs, outputs, errors, code")
     print("   - Debug logging enabled")
@@ -19,12 +19,12 @@ def demonstrate_init_usage():
 
     # Example 2: Explicit development mode
     print("\n2. Explicit development mode:")
-    print("   vaquero.init(api_key='your-api-key', mode='development')")
+    print("   synqui.init(api_key='your-api-key', mode='development')")
     print("   - Same as default, but explicit")
 
     # Example 3: Production mode
     print("\n3. Production mode:")
-    print("   vaquero.init(api_key='your-api-key', mode='production')")
+    print("   synqui.init(api_key='your-api-key', mode='production')")
     print("   - Optimized for production use")
     print("   - Does NOT capture inputs/outputs/code")
     print("   - Only captures errors and tokens")
@@ -33,7 +33,7 @@ def demonstrate_init_usage():
 
     # Example 4: Custom configuration with overrides
     print("\n4. Custom configuration with overrides:")
-    print("   vaquero.init(")
+    print("   synqui.init(")
     print("       api_key='your-api-key',")
     print("       mode='development',")
     print("       project_id='custom-project',")
@@ -45,18 +45,18 @@ def demonstrate_init_usage():
 
     # Example 5: Custom endpoint
     print("\n5. Custom endpoint:")
-    print("   vaquero.init(")
+    print("   synqui.init(")
     print("       api_key='your-api-key',")
-    print("       endpoint='https://custom.vaquero.app'")
+    print("       endpoint='https://custom.synqui.app'")
     print("   )")
-    print("   - Use custom Vaquero endpoint")
+    print("   - Use custom Synqui endpoint")
 
 def show_mode_differences():
     """Show the differences between development and production modes."""
     print("\n📊 Mode Comparison:")
     print("=" * 40)
 
-    from vaquero.config import MODE_PRESETS
+    from synqui.config import MODE_PRESETS
 
     dev = MODE_PRESETS['development']
     prod = MODE_PRESETS['production']
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     print("\n✅ Examples completed!")
     print("\nTo use the new init() method in your code:")
-    print("1. Replace vaquero.configure(...) with vaquero.init(api_key='...')")
+    print("1. Replace synqui.configure(...) with synqui.init(api_key='...')")
     print("2. Use mode='development' for development (default)")
     print("3. Use mode='production' for production")
     print("4. Add overrides as needed for your use case")

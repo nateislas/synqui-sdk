@@ -38,20 +38,20 @@ if not logger.handlers:
 # Load environment variables
 load_dotenv()
 
-# Initialize Vaquero SDK with error handling
+# Initialize Synqui SDK with error handling
 try:
-    import vaquero
-    VAQUERO_AVAILABLE = True
+    import synqui
+    SYNQUI_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Vaquero SDK not available: {e}")
-    VAQUERO_AVAILABLE = False
+    print(f"Warning: Synqui SDK not available: {e}")
+    SYNQUI_AVAILABLE = False
 
 # LangGraph handler import (new API)
 try:
-    from vaquero.langgraph import VaqueroLangGraphHandler
-    VAQUERO_LANGGRAPH_AVAILABLE = True
+    from synqui.langgraph import SynquiLangGraphHandler
+    SYNQUI_LANGGRAPH_AVAILABLE = True
 except Exception:
-    VAQUERO_LANGGRAPH_AVAILABLE = False
+    SYNQUI_LANGGRAPH_AVAILABLE = False
 
 
 def _process_pdf_upload(uploaded_file) -> Optional[str]:
@@ -81,13 +81,13 @@ def _shutdown_app():
     """Shutdown the Streamlit application"""
     st.warning("🛑 Shutting down the application...")
     
-    # Clean up any active Vaquero sessions
-    if "vaquero_chat_session" in st.session_state and st.session_state.vaquero_chat_session:
+    # Clean up any active Synqui sessions
+    if "synqui_chat_session" in st.session_state and st.session_state.synqui_chat_session:
         try:
-            st.session_state.vaquero_chat_session.end_session("user_shutdown")
-            st.info("🔧 Vaquero session ended gracefully")
+            st.session_state.synqui_chat_session.end_session("user_shutdown")
+            st.info("🔧 Synqui session ended gracefully")
         except Exception as e:
-            st.warning(f"Warning: Could not end Vaquero session: {e}")
+            st.warning(f"Warning: Could not end Synqui session: {e}")
     
     # Clear session state
     for key in list(st.session_state.keys()):
@@ -101,30 +101,30 @@ def _shutdown_app():
 def main():
     st.set_page_config(page_title="Article Explainer", page_icon="📚", layout="wide")
 
-    # Initialize Vaquero SDK
-    if "vaquero_initialized" not in st.session_state:
-        if VAQUERO_AVAILABLE:
+    # Initialize Synqui SDK
+    if "synqui_initialized" not in st.session_state:
+        if SYNQUI_AVAILABLE:
             try:
-                vaquero.init(
-                    project_name=os.getenv('VAQUERO_PROJECT_NAME', "article-explainer"),
-                    project_api_key=os.getenv('VAQUERO_PROJECT_API_KEY'),
-                    endpoint=os.getenv('VAQUERO_ENDPOINT', 'http://localhost:8000'),
-                    environment=os.getenv('VAQUERO_ENVIRONMENT', os.getenv('VAQUERO_MODE', 'development'))
+                synqui.init(
+                    project_name=os.getenv('SYNQUI_PROJECT_NAME', "article-explainer"),
+                    project_api_key=os.getenv('SYNQUI_PROJECT_API_KEY'),
+                    endpoint=os.getenv('SYNQUI_ENDPOINT', 'http://localhost:8000'),
+                    environment=os.getenv('SYNQUI_ENVIRONMENT', os.getenv('SYNQUI_MODE', 'development'))
                 )
-                st.session_state.vaquero_initialized = True
+                st.session_state.synqui_initialized = True
 
                 # Create fallback handler if not already created
-                if "vaquero_handler" not in st.session_state:
-                    if VAQUERO_AVAILABLE and VAQUERO_LANGGRAPH_AVAILABLE:
-                        st.session_state.vaquero_handler = VaqueroLangGraphHandler()
+                if "synqui_handler" not in st.session_state:
+                    if SYNQUI_AVAILABLE and SYNQUI_LANGGRAPH_AVAILABLE:
+                        st.session_state.synqui_handler = SynquiLangGraphHandler()
                     else:
-                        st.session_state.vaquero_handler = None
+                        st.session_state.synqui_handler = None
             except Exception as e:
-                st.warning(f"Vaquero initialization failed: {e}")
-                st.session_state.vaquero_initialized = False
+                st.warning(f"Synqui initialization failed: {e}")
+                st.session_state.synqui_initialized = False
         else:
-            st.info("Vaquero SDK not available - running without observability")
-            st.session_state.vaquero_initialized = False
+            st.info("Synqui SDK not available - running without observability")
+            st.session_state.synqui_initialized = False
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -178,23 +178,23 @@ def main():
                                 }
                             ]
 
-                        # Create or update Vaquero chat session
-                        if st.session_state.vaquero_initialized and VAQUERO_AVAILABLE:
+                        # Create or update Synqui chat session
+                        if st.session_state.synqui_initialized and SYNQUI_AVAILABLE:
                             try:
                                 # Store document name for session timeout handling
                                 st.session_state.current_document_name = uploaded_file.name
 
                                 # End previous session if this is a new document
                                 if (is_new_document and
-                                    "vaquero_chat_session" in st.session_state and
-                                    st.session_state.vaquero_chat_session):
-                                    old_session = st.session_state.vaquero_chat_session
+                                    "synqui_chat_session" in st.session_state and
+                                    st.session_state.synqui_chat_session):
+                                    old_session = st.session_state.synqui_chat_session
                                     old_session.end_session("new_document")
                                     st.info(f"🕒 Previous session ended (new document uploaded)")
 
                                 # Create a new chat session for this document
                                 session_name = f"pdf_chat_{uploaded_file.name}"
-                                vaquero_session = vaquero.start_chat_session(
+                                synqui_session = synqui.start_chat_session(
                                     name=session_name,
                                     session_type="chat",
                                     timeout_minutes=30,
@@ -206,14 +206,14 @@ def main():
                                 )
 
                                 # Update handler to use session-aware version (automatic session management)
-                                if VAQUERO_LANGGRAPH_AVAILABLE:
-                                    st.session_state.vaquero_handler = VaqueroLangGraphHandler(session=vaquero_session)
+                                if SYNQUI_LANGGRAPH_AVAILABLE:
+                                    st.session_state.synqui_handler = SynquiLangGraphHandler(session=synqui_session)
                                 else:
-                                    st.session_state.vaquero_handler = None
-                                st.session_state.vaquero_chat_session = vaquero_session
+                                    st.session_state.synqui_handler = None
+                                st.session_state.synqui_chat_session = synqui_session
                                 
                                 # Debug: Log session creation
-                                st.info(f"🔧 Debug: Created session-aware handler for session {vaquero_session.session_id}")
+                                st.info(f"🔧 Debug: Created session-aware handler for session {synqui_session.session_id}")
 
                                 if is_new_document:
                                     st.info(f"🕒 New chat session created: {session_name} (30min timeout)")
@@ -221,7 +221,7 @@ def main():
                                     st.info(f"🕒 Chat session created: {session_name} (30min timeout)")
 
                             except Exception as e:
-                                st.warning(f"Vaquero session creation failed: {e}")
+                                st.warning(f"Synqui session creation failed: {e}")
 
     if st.session_state.document_content is not None:
         with st.expander("📖 View document", expanded=False):
@@ -245,17 +245,17 @@ def main():
                         )
 
                         # Handle user message in session
-                        if (st.session_state.vaquero_initialized and
-                            VAQUERO_AVAILABLE and
-                            "vaquero_handler" in st.session_state and
-                            hasattr(st.session_state.vaquero_handler, 'handle_user_message')):
-                            st.session_state.vaquero_handler.handle_user_message(prompt)
+                        if (st.session_state.synqui_initialized and
+                            SYNQUI_AVAILABLE and
+                            "synqui_handler" in st.session_state and
+                            hasattr(st.session_state.synqui_handler, 'handle_user_message')):
+                            st.session_state.synqui_handler.handle_user_message(prompt)
 
-                        # Create Vaquero configuration for LangGraph
-                        if st.session_state.vaquero_initialized and VAQUERO_AVAILABLE:
+                        # Create Synqui configuration for LangGraph
+                        if st.session_state.synqui_initialized and SYNQUI_AVAILABLE:
                             # Debug: Log handler and session info
-                            handler = st.session_state.vaquero_handler
-                            session = st.session_state.get('vaquero_chat_session')
+                            handler = st.session_state.synqui_handler
+                            session = st.session_state.get('synqui_chat_session')
                             if session:
                                 st.info(f"🔧 Debug: Using session {session.session_id} with handler {type(handler).__name__}")
                             
@@ -265,9 +265,9 @@ def main():
                                 graph_name="ArticleExplainer"
                             )
                             
-                            # Create Vaquero configuration with usage handler and invoke LangGraph
+                            # Create Synqui configuration with usage handler and invoke LangGraph
                             usage_handler = UsageMetadataCallbackHandler()
-                            config = {"callbacks": [handler, usage_handler], "configurable": {"vaquero_handler": handler}}
+                            config = {"callbacks": [handler, usage_handler], "configurable": {"synqui_handler": handler}}
                             
                             # Add detailed logging for agent execution
                             st.info(f"🚀 Starting LangGraph execution with {len(st.session_state.agent_state['messages'])} messages")
@@ -310,17 +310,17 @@ def main():
                                 # if hasattr(last_message, 'content'):
                                 #     st.info(f"📝 Last message content preview: {str(last_message.content)[:100]}...")
                         else:
-                            st.info("⚠️ Running without Vaquero observability")
+                            st.info("⚠️ Running without Synqui observability")
                             
-                            # Log even without Vaquero
+                            # Log even without Synqui
                             logger.info("=" * 80)
-                            logger.info("🚀 LANGGRAPH EXECUTION START (NO VAQUERO)")
+                            logger.info("🚀 LANGGRAPH EXECUTION START (NO SYNQUI)")
                             logger.info(f"🔧 Input state: {st.session_state.agent_state}")
                             logger.info(f"🔧 Available graph nodes: {list(app.get_graph().nodes.keys())}")
                             
                             response_state = app.invoke(st.session_state.agent_state)
                             
-                            logger.info("✅ LANGGRAPH EXECUTION COMPLETED (NO VAQUERO)")
+                            logger.info("✅ LANGGRAPH EXECUTION COMPLETED (NO SYNQUI)")
                             logger.info(f"🔧 Response state: {response_state}")
                             logger.info("=" * 80)
 

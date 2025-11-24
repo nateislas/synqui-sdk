@@ -1,5 +1,5 @@
 """
-LangGraph integration for Vaquero SDK.
+LangGraph integration for Synqui SDK.
 
 This module provides a thin callback handler that emits normalized spans
 for LangGraph applications, delegating all aggregation to the processor.
@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, List
 from datetime import datetime
 import uuid
 
-from .sdk import VaqueroSDK, get_global_instance
+from .sdk import SynquiSDK, get_global_instance
 from .chat_session import ChatSession
 from .serialization import safe_serialize
 
@@ -22,9 +22,9 @@ except ImportError:
     BaseCallbackHandler = object  # Fallback for type hints
 
 
-class VaqueroLangGraphHandler(BaseCallbackHandler):
+class SynquiLangGraphHandler(BaseCallbackHandler):
     """
-    Thin Vaquero handler for LangGraph applications.
+    Thin Synqui handler for LangGraph applications.
     
     This handler emits normalized spans for LangGraph workflows,
     delegating all aggregation and hierarchy building to the processor.
@@ -36,12 +36,12 @@ class VaqueroLangGraphHandler(BaseCallbackHandler):
     - Preserves raw inputs/outputs for processor analysis
     """
     
-    def __init__(self, session: Optional[ChatSession] = None, sdk: Optional[VaqueroSDK] = None):
+    def __init__(self, session: Optional[ChatSession] = None, sdk: Optional[SynquiSDK] = None):
         """Initialize the LangGraph handler with optional chat session.
 
         Args:
             session: Optional ChatSession for chat-based applications
-            sdk: Vaquero SDK instance to use. If None, uses the global instance.
+            sdk: Synqui SDK instance to use. If None, uses the global instance.
         """
         if not LANGCHAIN_AVAILABLE:
             raise ImportError(

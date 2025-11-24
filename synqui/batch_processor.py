@@ -32,7 +32,7 @@ class BatchProcessor:
 
     This class runs in a background thread and periodically collects
     trace events from a queue, batches them, and sends them to the
-    Vaquero API using asynchronous HTTP requests.
+    Synqui API using asynchronous HTTP requests.
 
     Features:
     - Automatic batching based on size and time intervals
@@ -41,7 +41,7 @@ class BatchProcessor:
     - Memory-efficient queue management
     """
 
-    def __init__(self, sdk: 'VaqueroSDK'):
+    def __init__(self, sdk: 'SynquiSDK'):
         """Initialize the batch processor.
 
         Args:
@@ -66,7 +66,7 @@ class BatchProcessor:
             return
 
         self._running = True
-        self._thread = Thread(target=self._process_loop, daemon=True, name="Vaquero-BatchProcessor")
+        self._thread = Thread(target=self._process_loop, daemon=True, name="Synqui-BatchProcessor")
         self._thread.start()
 
     def shutdown(self, timeout: float = 5.0):
@@ -253,7 +253,7 @@ class BatchProcessor:
             target=self._send_batch_sync,
             args=(batch_to_send,),
             daemon=True,
-            name="Vaquero-BatchSender"
+            name="Synqui-BatchSender"
         )
         send_thread.start()
 
@@ -791,7 +791,7 @@ class BatchProcessor:
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json",
-            "User-Agent": "Vaquero-Python-SDK/0.1.0"
+            "User-Agent": "Synqui-Python-SDK/0.1.0"
         }
 
         # Convert datetime strings to datetime objects for backend compatibility
@@ -923,7 +923,7 @@ class BatchProcessor:
                 target=self._send_batch_sync,
                 args=(failed_batch["batch"],),
                 daemon=True,
-                name="Vaquero-BatchRetry"
+                name="Synqui-BatchRetry"
             )
             send_thread.start()
 

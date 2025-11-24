@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Advanced Usage Examples for Vaquero SDK
+Advanced Usage Examples for Synqui SDK
 
-This file demonstrates advanced features and patterns for the Vaquero SDK,
+This file demonstrates advanced features and patterns for the Synqui SDK,
 including custom configurations, performance monitoring, and integration patterns.
 """
 
@@ -12,8 +12,8 @@ import json
 import logging
 from typing import Dict, List, Any, Optional
 from contextlib import asynccontextmanager
-import vaquero
-from vaquero import SDKConfig
+import synqui
+from synqui import SDKConfig
 
 # Configure logging to see SDK debug information
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +43,7 @@ def setup_custom_sdk():
     prod_config = SDKConfig(
         api_key="prod-api-key",
         project_id="prod-project",
-        endpoint="https://api.vaquero.app/api/v1",
+        endpoint="https://api.synqui.app/api/v1",
         batch_size=100,  # Larger batches for efficiency
         flush_interval=10.0,  # Less frequent flushing
         max_retries=3,  # More retries for reliability
@@ -56,20 +56,20 @@ def setup_custom_sdk():
     )
     
     # Use development config for this example
-    vaquero.configure_from_config(dev_config)
+    synqui.configure_from_config(dev_config)
     return dev_config
 
 # Example 2: Performance Monitoring Integration
 class PerformanceMonitor:
-    """Custom performance monitoring with Vaquero integration."""
+    """Custom performance monitoring with Synqui integration."""
     
     def __init__(self):
         self.metrics = {}
     
-    @vaquero.trace(agent_name="performance_monitor")
+    @synqui.trace(agent_name="performance_monitor")
     def record_metric(self, metric_name: str, value: float, tags: Dict[str, str] = None):
         """Record a performance metric with tracing."""
-        with vaquero.span("record_metric") as span:
+        with synqui.span("record_metric") as span:
             span.set_attribute("metric_name", metric_name)
             span.set_attribute("metric_value", value)
             if tags:
@@ -82,10 +82,10 @@ class PerformanceMonitor:
                 "tags": tags or {}
             }
     
-    @vaquero.trace(agent_name="performance_monitor")
+    @synqui.trace(agent_name="performance_monitor")
     def get_metrics_summary(self) -> Dict[str, Any]:
         """Get a summary of all metrics."""
-        with vaquero.span("get_metrics_summary") as span:
+        with synqui.span("get_metrics_summary") as span:
             span.set_attribute("metric_count", len(self.metrics))
             
             summary = {
@@ -104,7 +104,7 @@ class DatabaseClient:
         self.connection_string = connection_string
         self.performance_monitor = PerformanceMonitor()
     
-    @vaquero.trace(agent_name="database_client")
+    @synqui.trace(agent_name="database_client")
     async def execute_query(self, query: str, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """Execute a database query with tracing."""
         start_time = time.time()
@@ -138,10 +138,10 @@ class DatabaseClient:
             )
             raise
     
-    @vaquero.trace(agent_name="database_client")
+    @synqui.trace(agent_name="database_client")
     async def batch_insert(self, table: str, records: List[Dict[str, Any]]) -> int:
         """Batch insert with tracing."""
-        with vaquero.span("batch_insert") as span:
+        with synqui.span("batch_insert") as span:
             span.set_attribute("table_name", table)
             span.set_attribute("record_count", len(records))
             
@@ -174,15 +174,15 @@ class APIClient:
     
     def __init__(self, base_url: str):
         self.base_url = base_url
-        self.circuit_breaker = vaquero.CircuitBreaker(
+        self.circuit_breaker = synqui.CircuitBreaker(
             failure_threshold=3,
             recovery_timeout=30
         )
     
-    @vaquero.trace(agent_name="api_client")
+    @synqui.trace(agent_name="api_client")
     async def make_request(self, endpoint: str, method: str = "GET", data: Dict[str, Any] = None) -> Dict[str, Any]:
         """Make an API request with circuit breaker protection."""
-        with vaquero.span("make_request") as span:
+        with synqui.span("make_request") as span:
             span.set_attribute("endpoint", endpoint)
             span.set_attribute("method", method)
             span.set_attribute("base_url", self.base_url)
@@ -228,23 +228,23 @@ class WorkflowOrchestrator:
         self.api_client = APIClient("https://api.example.com")
         self.performance_monitor = PerformanceMonitor()
     
-    @vaquero.trace(agent_name="workflow_orchestrator")
+    @synqui.trace(agent_name="workflow_orchestrator")
     async def process_user_registration(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process user registration workflow with tracing."""
         workflow_id = f"registration_{int(time.time())}"
         
-        async with vaquero.span("process_user_registration") as workflow_span:
+        async with synqui.span("process_user_registration") as workflow_span:
             workflow_span.set_attribute("workflow_id", workflow_id)
             workflow_span.set_attribute("user_email", user_data.get("email", "unknown"))
             
             try:
                 # Step 1: Validate user data
-                async with vaquero.span("validate_user_data") as validate_span:
+                async with synqui.span("validate_user_data") as validate_span:
                     validate_span.set_attribute("validation_type", "registration")
                     validated_data = await self._validate_user_data(user_data)
                 
                 # Step 2: Check if user exists
-                async with vaquero.span("check_user_exists") as check_span:
+                async with synqui.span("check_user_exists") as check_span:
                     existing_users = await self.db_client.execute_query(
                         "SELECT * FROM users WHERE email = %(email)s",
                         {"email": validated_data["email"]}
@@ -255,12 +255,12 @@ class WorkflowOrchestrator:
                     raise ValueError("User already exists")
                 
                 # Step 3: Create user in database
-                async with vaquero.span("create_user") as create_span:
+                async with synqui.span("create_user") as create_span:
                     user_id = await self._create_user(validated_data)
                     create_span.set_attribute("user_id", user_id)
                 
                 # Step 4: Send welcome email
-                async with vaquero.span("send_welcome_email") as email_span:
+                async with synqui.span("send_welcome_email") as email_span:
                     email_result = await self.api_client.make_request(
                         "/send-email",
                         "POST",
@@ -322,7 +322,7 @@ class WorkflowOrchestrator:
 @asynccontextmanager
 async def traced_resource_manager(resource_name: str, **attributes):
     """Custom context manager for resource management with tracing."""
-    async with vaquero.span(f"manage_{resource_name}") as span:
+    async with synqui.span(f"manage_{resource_name}") as span:
         for key, value in attributes.items():
             span.set_attribute(key, value)
         
@@ -339,14 +339,14 @@ async def traced_resource_manager(resource_name: str, **attributes):
             span.set_attribute("resource_status", "released")
 
 # Example 7: Batch Processing with Progress Tracking
-@vaquero.trace(agent_name="batch_processor")
+@synqui.trace(agent_name="batch_processor")
 async def process_large_dataset(dataset: List[Dict[str, Any]], batch_size: int = 10) -> Dict[str, Any]:
     """Process large dataset with progress tracking."""
     total_items = len(dataset)
     processed_items = 0
     errors = 0
     
-    async with vaquero.span("process_large_dataset") as main_span:
+    async with synqui.span("process_large_dataset") as main_span:
         main_span.set_attribute("total_items", total_items)
         main_span.set_attribute("batch_size", batch_size)
         
@@ -354,7 +354,7 @@ async def process_large_dataset(dataset: List[Dict[str, Any]], batch_size: int =
             batch = dataset[i:i + batch_size]
             batch_number = i // batch_size + 1
             
-            async with vaquero.span(f"process_batch_{batch_number}") as batch_span:
+            async with synqui.span(f"process_batch_{batch_number}") as batch_span:
                 batch_span.set_attribute("batch_number", batch_number)
                 batch_span.set_attribute("batch_size", len(batch))
                 batch_span.set_attribute("progress_percent", (i / total_items) * 100)
@@ -385,7 +385,7 @@ async def process_large_dataset(dataset: List[Dict[str, Any]], batch_size: int =
 
 async def main():
     """Run advanced examples."""
-    print("🚀 Running Advanced Vaquero SDK Examples")
+    print("🚀 Running Advanced Synqui SDK Examples")
     print("=" * 60)
     
     # Setup custom SDK

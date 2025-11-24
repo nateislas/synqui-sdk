@@ -1,4 +1,4 @@
-"""Example demonstrating automatic token counting in Vaquero SDK.
+"""Example demonstrating automatic token counting in Synqui SDK.
 
 This example shows how the SDK automatically counts tokens for LLM calls
 and regular function calls, providing accurate cost estimation and
@@ -6,19 +6,19 @@ performance monitoring.
 """
 
 import asyncio
-import vaquero
+import synqui
 from typing import Dict, Any, List
 
 
 # Initialize the SDK
-vaquero.init(
+synqui.init(
     api_key="your-api-key",
     project_id="your-project-id",
     capture_tokens=True  # Enable automatic token counting
 )
 
 
-@vaquero.trace("llm_agent")
+@synqui.trace("llm_agent")
 async def call_llm(prompt: str, model: str = "gpt-3.5-turbo") -> Dict[str, Any]:
     """Simulate an LLM call with automatic token counting."""
     # Simulate LLM response with usage information
@@ -36,7 +36,7 @@ async def call_llm(prompt: str, model: str = "gpt-3.5-turbo") -> Dict[str, Any]:
     return response
 
 
-@vaquero.trace("data_processor")
+@synqui.trace("data_processor")
 def process_data(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Process data with automatic token counting for inputs/outputs."""
     # Simulate data processing
@@ -55,7 +55,7 @@ def process_data(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-@vaquero.trace("research_agent")
+@synqui.trace("research_agent")
 async def research_topic(topic: str, depth: str = "shallow") -> Dict[str, Any]:
     """Research a topic with multiple LLM calls."""
     # First LLM call
@@ -83,7 +83,7 @@ async def research_topic(topic: str, depth: str = "shallow") -> Dict[str, Any]:
 
 async def main():
     """Main example function."""
-    print("🚀 Vaquero Token Counting Example")
+    print("🚀 Synqui Token Counting Example")
     print("=" * 50)
     
     # Example 1: Simple LLM call
@@ -112,8 +112,8 @@ async def main():
     print(f"   Analysis tokens: {result3['analysis']['usage']['total_tokens']}")
     
     # Flush any pending traces
-    vaquero.flush()
-    print("\n✅ All traces sent to Vaquero!")
+    synqui.flush()
+    print("\n✅ All traces sent to Synqui!")
 
 
 if __name__ == "__main__":

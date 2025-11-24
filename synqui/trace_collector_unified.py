@@ -14,7 +14,7 @@ except ImportError:
     REQUESTS_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from .sdk import VaqueroSDK
+    from .sdk import SynquiSDK
 
 
 def _get_trace_url(endpoint: str, trace_id: str) -> str:
@@ -27,10 +27,10 @@ def _get_trace_url(endpoint: str, trace_id: str) -> str:
     Returns:
         The full URL to view the trace in the UI
     """
-    # Check if using cloud (api.vaquero.app) or self-hosted
-    # If endpoint contains api.vaquero.app, use cloud UI
-    if "api.vaquero.app" in endpoint:
-        return f"https://www.vaquero.app/traces/{trace_id}"
+    # Check if using cloud (api.synqui.app) or self-hosted
+    # If endpoint contains api.synqui.app, use cloud UI
+    if "api.synqui.app" in endpoint:
+        return f"https://www.synqui.app/traces/{trace_id}"
     else:
         # Self-hosted - use localhost:3000
         return f"http://localhost:3000/traces/{trace_id}"
@@ -59,7 +59,7 @@ def json_serializable(obj):
 class UnifiedTraceCollector:
     """Unified trace collector that routes spans to framework-specific processors."""
     
-    def __init__(self, sdk: 'VaqueroSDK'):
+    def __init__(self, sdk: 'SynquiSDK'):
         self.sdk = sdk
         self.config = sdk.config
         self.processors = {
@@ -438,8 +438,8 @@ class UnifiedTraceCollector:
         except Exception:
             # Log trace URL even if there's an error
             if trace_id and trace_url:
-                print(f"🤠 Vaquero: Trace '{trace_name}' prepared")
-                print(f"🤠 Vaquero: View trace at {trace_url}")
+                print(f"🤠 Synqui: Trace '{trace_name}' prepared")
+                print(f"🤠 Synqui: View trace at {trace_url}")
     
     def _send_agent_to_api(self, agent_data: dict) -> None:
         """Send individual agent to API."""
@@ -473,8 +473,8 @@ class UnifiedTraceCollector:
             if not REQUESTS_AVAILABLE:
                 # Still log the trace URL even if requests isn't available
                 for trace_id, trace_name, trace_url in traces_to_log:
-                    print(f"🤠 Vaquero: Trace '{trace_name}' prepared (requests library not available)")
-                    print(f"🤠 Vaquero: View trace at {trace_url}")
+                    print(f"🤠 Synqui: Trace '{trace_name}' prepared (requests library not available)")
+                    print(f"🤠 Synqui: View trace at {trace_url}")
                 return
             
             serializable_data = json_serializable(batch_data)
@@ -496,18 +496,18 @@ class UnifiedTraceCollector:
             # Log batch details before sending
             trace_count = len(batch_data.get("traces", []))
             agent_count = len(batch_data.get("agents", []))
-            print(f"🤠 Vaquero SDK: Sending batch to {url} - {trace_count} trace(s), {agent_count} agent(s)")
+            print(f"🤠 Synqui SDK: Sending batch to {url} - {trace_count} trace(s), {agent_count} agent(s)")
             if project_id:
-                print(f"🤠 Vaquero SDK: Project ID: {project_id}")
+                print(f"🤠 Synqui SDK: Project ID: {project_id}")
             
             response = requests.post(url, json=serializable_data, headers=headers, timeout=30)
             
             # Log HTTP response details
-            print(f"🤠 Vaquero SDK: HTTP Response - Status: {response.status_code}")
+            print(f"🤠 Synqui SDK: HTTP Response - Status: {response.status_code}")
             if response.status_code not in (200, 201, 202):
                 try:
                     error_detail = response.text[:500] if response.text else "No error message"
-                    print(f"🤠 Vaquero SDK: Error response: {error_detail}")
+                    print(f"🤠 Synqui SDK: Error response: {error_detail}")
                 except Exception:
                     pass
             
@@ -515,19 +515,19 @@ class UnifiedTraceCollector:
             # 200 = OK, 201 = Created, 202 = Accepted (all are success codes)
             if response.status_code in (200, 201, 202):
                 for trace_id, trace_name, trace_url in traces_to_log:
-                    print(f"🤠 Vaquero: Trace '{trace_name}' sent successfully (trace_id: {trace_id})")
-                    print(f"🤠 Vaquero: View trace at {trace_url}")
+                    print(f"🤠 Synqui: Trace '{trace_name}' sent successfully (trace_id: {trace_id})")
+                    print(f"🤠 Synqui: View trace at {trace_url}")
             else:
                 # Log even on error, but indicate it may have failed
                 for trace_id, trace_name, trace_url in traces_to_log:
-                    print(f"🤠 Vaquero: Trace '{trace_name}' sent (status: {response.status_code}, trace_id: {trace_id})")
-                    print(f"🤠 Vaquero: View trace at {trace_url}")
+                    print(f"🤠 Synqui: Trace '{trace_name}' sent (status: {response.status_code}, trace_id: {trace_id})")
+                    print(f"🤠 Synqui: View trace at {trace_url}")
         except Exception as e:
             # Log trace URLs even if there's an error
-            print(f"🤠 Vaquero SDK: Error sending batch: {e}")
+            print(f"🤠 Synqui SDK: Error sending batch: {e}")
             for trace_id, trace_name, trace_url in traces_to_log:
-                print(f"🤠 Vaquero: Trace '{trace_name}' prepared (trace_id: {trace_id})")
-                print(f"🤠 Vaquero: View trace at {trace_url}")
+                print(f"🤠 Synqui: Trace '{trace_name}' prepared (trace_id: {trace_id})")
+                print(f"🤠 Synqui: View trace at {trace_url}")
     
     def _get_user_id(self) -> Optional[str]:
         """Get user ID and project ID from whoami endpoint (cached)."""

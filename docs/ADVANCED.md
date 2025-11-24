@@ -5,7 +5,7 @@
 ### Creating and Managing Sessions
 ```python
 # Start a new chat session
-session = vaquero.start_chat_session(
+session = synqui.start_chat_session(
     name="user-123-session",
     session_type="chat",
     timeout_minutes=30,
@@ -15,7 +15,7 @@ session = vaquero.start_chat_session(
 
 # Session automatically groups related traces
 # Use the same session for multiple invocations
-handler = VaqueroLangGraphHandler(session=session)
+handler = SynquiLangGraphHandler(session=session)
 ```
 
 ### Session Lifecycle
@@ -46,13 +46,13 @@ handler.set_graph_architecture(
 
 ### Advanced Setup
 ```python
-import vaquero
+import synqui
 import os
 
-vaquero.init(
+synqui.init(
     project_name="my-project",
-    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
-    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
+    project_api_key=os.getenv("SYNQUI_PROJECT_API_KEY"),
+    environment=os.getenv("SYNQUI_ENVIRONMENT", "development")
 )
 ```
 
@@ -60,30 +60,30 @@ vaquero.init(
 
 **Configuration via Environment**
 ```bash
-VAQUERO_PROJECT_API_KEY=cf_your-api-key
-VAQUERO_PROJECT_NAME=my-project
-VAQUERO_ENVIRONMENT=development
+SYNQUI_PROJECT_API_KEY=cf_your-api-key
+SYNQUI_PROJECT_NAME=my-project
+SYNQUI_ENVIRONMENT=development
 ```
 
 ```python
-import vaquero
+import synqui
 import os
 
-vaquero.init(
-    project_name=os.getenv("VAQUERO_PROJECT_NAME"),
-    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
-    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
+synqui.init(
+    project_name=os.getenv("SYNQUI_PROJECT_NAME"),
+    project_api_key=os.getenv("SYNQUI_PROJECT_API_KEY"),
+    environment=os.getenv("SYNQUI_ENVIRONMENT", "development")
 )
 ```
 
 ### Production Configuration
 ```python
-import vaquero
+import synqui
 import os
 
-vaquero.init(
+synqui.init(
     project_name="production-app",
-    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
+    project_api_key=os.getenv("SYNQUI_PROJECT_API_KEY"),
     environment="production"
 )
 ```

@@ -1,4 +1,4 @@
-"""Main Vaquero SDK implementation."""
+"""Main Synqui SDK implementation."""
 
 import asyncio
 import functools
@@ -21,15 +21,15 @@ from .analytics import initialize_analytics, get_analytics
 from .chat_session import ChatSession, create_chat_session
 
 
-class VaqueroSDK:
-    """Main SDK class for Vaquero instrumentation.
+class SynquiSDK:
+    """Main SDK class for Synqui instrumentation.
 
     This class provides the core functionality for tracing function calls
-    and sending trace data to the Vaquero platform.
+    and sending trace data to the Synqui platform.
 
     Example:
         config = SDKConfig(api_key="your-key", project_id="your-project")
-        sdk = VaqueroSDK(config)
+        sdk = SynquiSDK(config)
 
         @sdk.trace("my_agent")
         def my_function():
@@ -49,7 +49,7 @@ class VaqueroSDK:
         self._first_trace_tracked = False
 
         # Log initialization
-        print("🤠 Vaquero: Initializing SDK...")
+        print("🤠 Synqui: Initializing SDK...")
 
         # Initialize analytics (framework detection, SDK version reporting)
         self._analytics = initialize_analytics(
@@ -314,7 +314,7 @@ class VaqueroSDK:
         """Context manager for manual span creation.
 
         This is used as a context manager for code blocks that need manual span control.
-        For function decoration, use @vaquero.trace() instead.
+        For function decoration, use @synqui.trace() instead.
 
         Args:
             operation_name: Name of the operation/agent
@@ -570,9 +570,9 @@ class VaqueroSDK:
             
             # NOTE: We do NOT automatically end traces here.
             # Traces are ended explicitly by:
-            # 1. The span context manager (for @vaquero.trace decorators)
+            # 1. The span context manager (for @synqui.trace decorators)
             # 2. The LangChain callback handler (when the workflow completes)
-            # 3. Manual calls to vaquero.end_trace() by the user
+            # 3. Manual calls to synqui.end_trace() by the user
 
         except Exception:
             pass
@@ -680,7 +680,7 @@ class VaqueroSDK:
 
         Example:
             # Initialize SDK first
-            sdk = VaqueroSDK(config)
+            sdk = SynquiSDK(config)
 
             # Create a chat session for conversational AI
             session = sdk.start_chat_session(
@@ -690,7 +690,7 @@ class VaqueroSDK:
             )
 
             # Use the session with LangGraph handler
-            handler = VaqueroLangGraphHandler(session=session)
+            handler = SynquiLangGraphHandler(session=session)
         """
         return create_chat_session(
             name=name,
@@ -702,10 +702,10 @@ class VaqueroSDK:
 
 
 # Global SDK instance
-_sdk_instance: Optional[VaqueroSDK] = None
+_sdk_instance: Optional[SynquiSDK] = None
 
 
-def get_current_sdk() -> Optional[VaqueroSDK]:
+def get_current_sdk() -> Optional[SynquiSDK]:
     """Get the current global SDK instance.
     
     Returns:
@@ -714,7 +714,7 @@ def get_current_sdk() -> Optional[VaqueroSDK]:
     return _sdk_instance
 
 
-def initialize(config: SDKConfig) -> VaqueroSDK:
+def initialize(config: SDKConfig) -> SynquiSDK:
     """Initialize the global SDK instance.
 
     Args:
@@ -724,11 +724,11 @@ def initialize(config: SDKConfig) -> VaqueroSDK:
         Initialized SDK instance
     """
     global _sdk_instance
-    _sdk_instance = VaqueroSDK(config)
+    _sdk_instance = SynquiSDK(config)
     return _sdk_instance
 
 
-def get_global_instance() -> VaqueroSDK:
+def get_global_instance() -> SynquiSDK:
     """Get the global SDK instance.
 
     Returns:
@@ -740,6 +740,6 @@ def get_global_instance() -> VaqueroSDK:
     if _sdk_instance is None:
         raise RuntimeError(
             "No global SDK instance available. "
-            "Call vaquero.init() or VaqueroSDK.initialize() first."
+            "Call synqui.init() or SynquiSDK.initialize() first."
         )
     return _sdk_instance

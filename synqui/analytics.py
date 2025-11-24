@@ -1,5 +1,5 @@
 """
-Vaquero SDK Analytics Module
+Synqui SDK Analytics Module
 
 This module handles anonymous analytics collection to help us understand:
 - Which frameworks are being used (LangChain, CrewAI, etc.)
@@ -52,7 +52,7 @@ class SDKAnalytics:
         Initialize SDK analytics.
         
         Args:
-            api_key: Vaquero API key (for user identification)
+            api_key: Synqui API key (for user identification)
             project_id: Project ID (for grouping)
             enabled: Whether analytics is enabled (default: True)
             posthog_api_key: PostHog API key for analytics
@@ -61,7 +61,7 @@ class SDKAnalytics:
         self.enabled = enabled and REQUESTS_AVAILABLE
         self.api_key = api_key
         self.project_id = project_id
-        self.posthog_api_key = posthog_api_key or os.getenv('VAQUERO_POSTHOG_KEY')
+        self.posthog_api_key = posthog_api_key or os.getenv('SYNQUI_POSTHOG_KEY')
         self.posthog_host = posthog_host
         
         # Detect framework on initialization
@@ -107,7 +107,7 @@ class SDKAnalytics:
     def _get_sdk_version(self) -> str:
         """Get the SDK version."""
         try:
-            return pkg_version('vaquero')
+            return pkg_version('synqui')
         except PackageNotFoundError:
             return 'unknown'
     
@@ -232,7 +232,7 @@ def initialize_analytics(
     Initialize global SDK analytics.
     
     Args:
-        api_key: Vaquero API key
+        api_key: Synqui API key
         project_id: Project ID
         enabled: Whether to enable analytics
     
@@ -242,7 +242,7 @@ def initialize_analytics(
     global _analytics_instance
     
     # Check for opt-out environment variable
-    if os.getenv('VAQUERO_ANALYTICS_DISABLED', '').lower() in ('true', '1', 'yes'):
+    if os.getenv('SYNQUI_ANALYTICS_DISABLED', '').lower() in ('true', '1', 'yes'):
         enabled = False
     
     _analytics_instance = SDKAnalytics(

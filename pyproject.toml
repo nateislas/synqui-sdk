@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vaquero-sdk"
+name = "synqui-sdk"
 version = "0.1.0"
-description = "Python SDK for Vaquero observability and tracing platform"
+description = "Python SDK for Synqui observability and tracing platform"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -14,7 +14,7 @@ authors = [
 maintainers = [
     {name = "Nathaniel Islas", email = "nathanielislas@gmail.com"}
 ]
-keywords = ["observability", "tracing", "monitoring", "vaquero", "telemetry"]
+keywords = ["observability", "tracing", "monitoring", "synqui", "telemetry"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -50,22 +50,22 @@ monitoring = [
     "psutil>=5.8.0",
 ]
 all = [
-    "vaquero-sdk[dev,monitoring]"
+    "synqui-sdk[dev,monitoring]"
 ]
 
 [project.urls]
-Homepage = "https://github.com/nateislas/vaquero-sdk"
-Documentation = "https://github.com/nateislas/vaquero-sdk#readme"
-Repository = "https://github.com/nateislas/vaquero-sdk"
-Changelog = "https://github.com/nateislas/vaquero-sdk/blob/main/CHANGELOG.md"
-"Bug Reports" = "https://github.com/nateislas/vaquero-sdk/issues"
+Homepage = "https://github.com/nateislas/synqui-sdk"
+Documentation = "https://github.com/nateislas/synqui-sdk#readme"
+Repository = "https://github.com/nateislas/synqui-sdk"
+Changelog = "https://github.com/nateislas/synqui-sdk/blob/main/CHANGELOG.md"
+"Bug Reports" = "https://github.com/nateislas/synqui-sdk/issues"
 
 [tool.setuptools.packages.find]
-include = ["vaquero*"]
+include = ["synqui*"]
 exclude = ["tests*"]
 
 [tool.setuptools.package-data]
-vaquero = ["py.typed"]
+synqui = ["py.typed"]
 
 [tool.black]
 line-length = 100
@@ -129,7 +129,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["vaquero"]
+source = ["synqui"]
 omit = [
     "*/tests/*",
     "*/test_*",

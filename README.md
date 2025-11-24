@@ -1,10 +1,10 @@
-# 🤠 Vaquero Python SDK
+# 🤠 Synqui Python SDK
 
 <div align="center">
   <h3>System intelligence for multi-agent AI</h3>
   <p><strong>Architecture extraction</strong> • <strong>Agent coordination</strong> • <strong>Performance insights</strong></p>
 
-  [![PyPI version](https://badge.fury.io/py/vaquero-sdk.svg)](https://badge.fury.io/py/vaquero-sdk)
+  [![PyPI version](https://badge.fury.io/py/synqui-sdk.svg)](https://badge.fury.io/py/synqui-sdk)
   [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 </div>
@@ -15,36 +15,36 @@
 
 ### 1. Install
 ```bash
-pip install vaquero-sdk
+pip install synqui-sdk
 ```
 
-> **Note:** The package is installed as `vaquero-sdk`, but imported in Python as `import vaquero`.
+> **Note:** The package is installed as `synqui-sdk`, but imported in Python as `import synqui`.
 
 ### 2. Get Your API Key
-1. Go to the [Vaquero Dashboard](https://www.vaquero.app)
+1. Go to the [Synqui Dashboard](https://www.synqui.app)
 2. Create a new project (or select an existing one)
 3. Navigate to the project's **Settings** page
 4. Click **Create Project API Key** (keys start with `cf_`)
 
-### 3. Initialize Vaquero
+### 3. Initialize Synqui
 ```python
-import vaquero
+import synqui
 import os
 
-vaquero.init(
+synqui.init(
     project_name="my-project",
-    project_api_key=os.getenv("VAQUERO_PROJECT_API_KEY"),
-    environment=os.getenv("VAQUERO_ENVIRONMENT", "development")
+    project_api_key=os.getenv("SYNQUI_PROJECT_API_KEY"),
+    environment=os.getenv("SYNQUI_ENVIRONMENT", "development")
 )
 ```
 
 ### 4. Integrate with LangChain
 ```python
-from vaquero.langchain import get_vaquero_handler
+from synqui.langchain import get_synqui_handler
 from langchain_openai import ChatOpenAI
 
 # Create handler
-handler = get_vaquero_handler(
+handler = get_synqui_handler(
     parent_context={"pipeline": "demo"}
 )
 
@@ -52,7 +52,7 @@ handler = get_vaquero_handler(
 llm = ChatOpenAI(callbacks=[handler])
 llm.invoke("Hello, world!")
 
-# Done! ✨ View your traces at https://www.vaquero.app
+# Done! ✨ View your traces at https://www.synqui.app
 ```
 
 ---
@@ -77,8 +77,8 @@ llm.invoke("Hello, world!")
 - **[🔧 Configuration Reference](docs/CONFIGURATION.md)** - Complete parameter and environment variable reference
 - **[🚨 Best Practices](docs/BEST_PRACTICES.md)** - Recommended patterns and common pitfalls
 - **[💡 Examples Directory](examples/)** - Real-world examples and integration patterns
-- **[🎯 Demo: Article Explainer](demos/article-explainer/)** - Full-featured demo application using LangGraph and Vaquero
-- **[🌐 Web Documentation](https://www.vaquero.app/docs)** - Complete API reference and guides
+- **[🎯 Demo: Article Explainer](demos/article-explainer/)** - Full-featured demo application using LangGraph and Synqui
+- **[🌐 Web Documentation](https://www.synqui.app/docs)** - Complete API reference and guides
 
 ---
 
@@ -86,19 +86,19 @@ llm.invoke("Hello, world!")
 
 ### From PyPI (Recommended)
 ```bash
-pip install vaquero-sdk
+pip install synqui-sdk
 ```
 
 ### From Source
 ```bash
-git clone https://github.com/nateislas/vaquero-sdk.git
-cd vaquero-sdk
+git clone https://github.com/nateislas/synqui-sdk.git
+cd synqui-sdk
 pip install -e .
 ```
 
 ### With All Dependencies
 ```bash
-pip install vaquero-sdk[all]
+pip install synqui-sdk[all]
 ```
 
 ---
@@ -110,5 +110,5 @@ Join our community! See [Contributing Guide](CONTRIBUTING.md)
 ---
 
 <div align="center">
-  <p><strong>Need help?</strong> Join our <a href="https://discord.gg/vaquero">Discord community</a> or email <a href="mailto:support@vaquero.app">support@vaquero.app</a></p>
+  <p><strong>Need help?</strong> Join our <a href="https://discord.gg/synqui">Discord community</a> or email <a href="mailto:support@synqui.app">support@synqui.app</a></p>
 </div>
